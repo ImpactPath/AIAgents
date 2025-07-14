@@ -14,8 +14,8 @@
         /* --- 테마를 위한 CSS 변수 설정 --- */
         :root[data-theme="dark"] {
             --bg-color: #020617;
-            --bg-aurora-1: rgba(0, 169, 157, 0.25);
-            --bg-aurora-2: rgba(74, 222, 128, 0.2);
+            --bg-aurora-1: rgba(0, 169, 157, 0.4); /* 오로라 효과 밝기 증가 */
+            --bg-aurora-2: rgba(74, 222, 128, 0.35); /* 오로라 효과 밝기 증가 */
             --bg-aurora-stop: rgba(2, 6, 23, 0);
             --card-bg: rgba(15, 23, 42, 0.6);
             --card-border: rgba(255, 255, 255, 0.1);
@@ -136,22 +136,28 @@
 
     <div class="max-w-7xl mx-auto">
         
-        <header class="relative mb-10 md:mb-12 text-center">
-            <!-- 테마 전환 토글 -->
-            <button id="theme-toggle" class="absolute top-0 right-0 w-12 h-12 rounded-full flex items-center justify-center cursor-pointer shadow-lg backdrop-filter backdrop-blur-sm">
+        <!-- ==================== HEADER SECTION START ==================== -->
+        <!-- 로고와 테마 토글을 위한 상단 바 -->
+        <div class="flex justify-between items-start mb-8">
+            <!-- 좌측 상단 로고 -->
+            <img class="h-16 w-auto" src="images/1.31b GGGI Logo New Vertical Green_Square.PNG" alt="GGGI Logo">
+
+            <!-- 우측 상단 테마 전환 토글 -->
+            <button id="theme-toggle" class="relative w-12 h-12 rounded-full flex items-center justify-center cursor-pointer shadow-lg backdrop-filter backdrop-blur-sm">
                 <svg id="moon-icon" class="icon w-6 h-6 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"></path></svg>
                 <svg id="sun-icon" class="icon w-6 h-6 text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>
             </button>
+        </div>
 
-            <div class="flex justify-center mb-6 pt-8 sm:pt-0">
-                <img class="h-16 w-auto" src="images/1.31b GGGI Logo New Vertical Green_Square.PNG" alt="GGGI Logo">
-            </div>
+        <!-- 제목과 부제목을 위한 중앙 정렬 헤더 -->
+        <header class="text-center mb-10 md:mb-12">
             <h1 class="main-title text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-extrabold tracking-tight">GGGI AI Agent Playground</h1>
             <p class="text-secondary mt-4 text-base sm:text-lg max-w-2xl mx-auto">
                 Explore a curated collection of AI tools to accelerate green growth innovations.
             </p>
         </header>
-
+        <!-- ===================== HEADER SECTION END ===================== -->
+        
         <!-- 필터 버튼 -->
         <div id="filter-container" class="flex flex-wrap justify-center gap-2 sm:gap-3 mb-10 md:mb-12">
             <button class="filter-btn active text-sm sm:text-base px-4 py-2 rounded-full" data-filter="all">All</button>
