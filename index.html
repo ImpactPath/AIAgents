@@ -14,8 +14,8 @@
         /* --- 테마를 위한 CSS 변수 설정 --- */
         :root[data-theme="dark"] {
             --bg-color: #020617;
-            --bg-aurora-1: rgba(0, 169, 157, 0.4); /* 오로라 효과 밝기 증가 */
-            --bg-aurora-2: rgba(74, 222, 128, 0.35); /* 오로라 효과 밝기 증가 */
+            --bg-aurora-1: rgba(0, 169, 157, 0.4);
+            --bg-aurora-2: rgba(74, 222, 128, 0.35);
             --bg-aurora-stop: rgba(2, 6, 23, 0);
             --card-bg: rgba(15, 23, 42, 0.6);
             --card-border: rgba(255, 255, 255, 0.1);
@@ -132,13 +132,13 @@
 
     </style>
 </head>
-<body class="p-4 sm:p-6 md:p-8">
+<body class="p-3 sm:p-4"> <!-- 전체적인 상하 패딩 조정 -->
 
     <div class="max-w-7xl mx-auto">
         
         <!-- ==================== HEADER SECTION START ==================== -->
         <!-- 로고와 테마 토글을 위한 상단 바 -->
-        <div class="flex justify-between items-start mb-8">
+        <div class="flex justify-between items-start">
             <!-- 좌측 상단 로고 -->
             <img class="h-16 w-auto" src="images/1.31b GGGI Logo New Vertical Green_Square.PNG" alt="GGGI Logo">
 
@@ -149,33 +149,35 @@
             </button>
         </div>
 
-        <!-- 제목과 부제목을 위한 중앙 정렬 헤더 -->
-        <header class="text-center mb-10 md:mb-12">
+        <!-- 제목과 부제목을 위한 중앙 정렬 헤더 (하단 여백 조정 mb-8 -> mb-4) -->
+        <header class="text-center mb-4">
             <h1 class="main-title text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-extrabold tracking-tight">GGGI AI Agent Playground</h1>
-            <p class="text-secondary mt-4 text-base sm:text-lg max-w-2xl mx-auto">
+            <p class="text-secondary mt-3 text-base sm:text-lg max-w-2xl mx-auto">
                 Explore a curated collection of AI tools to accelerate green growth innovations.
             </p>
         </header>
         <!-- ===================== HEADER SECTION END ===================== -->
         
-        <!-- 필터 버튼 -->
-        <div id="filter-container" class="flex flex-wrap justify-center gap-2 sm:gap-3 mb-10 md:mb-12">
-            <button class="filter-btn active text-sm sm:text-base px-4 py-2 rounded-full" data-filter="all">All</button>
+        <!-- 필터 버튼 (하단 여백 조정 mb-8 -> mb-6) -->
+        <div id="filter-container" class="flex flex-wrap justify-center gap-2 sm:gap-3 mb-6">
+            <!-- 필터 버튼 텍스트 크기 증가 -->
+            <button class="filter-btn active text-base sm:text-lg px-4 py-2 rounded-full" data-filter="all">All</button>
         </div>
 
         <!-- AI 에이전트 카드 그리드 -->
         <div id="agent-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
             
+            <!-- 카드 크기 조정을 위해 h-48 -> h-36, p-5 -> p-4, text-xl -> text-lg, mb-4 -> mb-3 으로 수정 -->
             <div class="agent-card rounded-xl overflow-hidden group cursor-pointer" data-tags="Writing,Ideas">
                 <a href="https://chat.openai.com/" target="_blank" class="block">
-                    <div class="w-full h-48"><img src="https://placehold.co/600x400/e2e8f0/64748b?text=ChatGPT" alt="ChatGPT Thumbnail" class="w-full h-full object-cover"></div>
-                    <div class="p-5">
-                        <h2 class="text-xl font-bold mb-2 flex items-center">
-                            <span class="text-2xl mr-3">✨</span>
+                    <div class="w-full h-36"><img src="https://placehold.co/600x400/e2e8f0/64748b?text=ChatGPT" alt="ChatGPT Thumbnail" class="w-full h-full object-cover"></div>
+                    <div class="p-4">
+                        <h2 class="text-lg font-bold mb-2 flex items-center">
+                            <span class="text-xl mr-2">✨</span>
                             <span>ChatGPT</span>
                         </h2>
-                        <p class="text-secondary mb-4 text-sm">A versatile AI for various tasks.</p>
-                        <div class="flex flex-wrap gap-2 mb-4">
+                        <p class="text-secondary mb-3 text-sm">A versatile AI for various tasks.</p>
+                        <div class="flex flex-wrap gap-2 mb-3">
                             <span class="tag text-xs font-semibold px-2.5 py-1 rounded-full">Writing</span>
                             <span class="tag text-xs font-semibold px-2.5 py-1 rounded-full">Ideas</span>
                         </div>
@@ -186,28 +188,28 @@
             
             <div class="agent-card rounded-xl overflow-hidden group cursor-pointer" data-tags="Image">
                 <a href="https://www.midjourney.com/" target="_blank" class="block">
-                    <div class="w-full h-48"><img src="https://placehold.co/600x400/e2e8f0/64748b?text=Midjourney" alt="Midjourney Thumbnail" class="w-full h-full object-cover"></div>
-                    <div class="p-5">
-                        <h2 class="text-xl font-bold mb-2 flex items-center">
-                            <span class="text-2xl mr-3">🎨</span>
+                    <div class="w-full h-36"><img src="https://placehold.co/600x400/e2e8f0/64748b?text=Midjourney" alt="Midjourney Thumbnail" class="w-full h-full object-cover"></div>
+                    <div class="p-4">
+                        <h2 class="text-lg font-bold mb-2 flex items-center">
+                            <span class="text-xl mr-2">🎨</span>
                             <span>Midjourney</span>
                         </h2>
-                        <p class="text-secondary mb-4 text-sm">Generates high-quality images from text.</p>
-                        <div class="flex flex-wrap gap-2 mb-4"><span class="tag text-xs font-semibold px-2.5 py-1 rounded-full">Image</span></div>
+                        <p class="text-secondary mb-3 text-sm">Generates high-quality images from text.</p>
+                        <div class="flex flex-wrap gap-2 mb-3"><span class="tag text-xs font-semibold px-2.5 py-1 rounded-full">Image</span></div>
                         <p class="text-tertiary text-sm group-hover:text-[var(--accent-color)] transition-colors">midjourney.com</p>
                     </div>
                 </a>
             </div>
             <div class="agent-card rounded-xl overflow-hidden group cursor-pointer" data-tags="Writing,Coding">
                  <a href="https://claude.ai/" target="_blank" class="block">
-                    <div class="w-full h-48"><img src="https://placehold.co/600x400/e2e8f0/64748b?text=Claude" alt="Claude Thumbnail" class="w-full h-full object-cover"></div>
-                    <div class="p-5">
-                        <h2 class="text-xl font-bold mb-2 flex items-center">
-                            <span class="text-2xl mr-3">✍️</span>
+                    <div class="w-full h-36"><img src="https://placehold.co/600x400/e2e8f0/64748b?text=Claude" alt="Claude Thumbnail" class="w-full h-full object-cover"></div>
+                    <div class="p-4">
+                        <h2 class="text-lg font-bold mb-2 flex items-center">
+                            <span class="text-xl mr-2">✍️</span>
                             <span>Claude</span>
                         </h2>
-                        <p class="text-secondary mb-4 text-sm">An AI specialized in natural conversation and writing.</p>
-                        <div class="flex flex-wrap gap-2 mb-4">
+                        <p class="text-secondary mb-3 text-sm">An AI specialized in natural conversation and writing.</p>
+                        <div class="flex flex-wrap gap-2 mb-3">
                             <span class="tag text-xs font-semibold px-2.5 py-1 rounded-full">Writing</span>
                             <span class="tag text-xs font-semibold px-2.5 py-1 rounded-full">Coding</span>
                         </div>
@@ -217,42 +219,42 @@
             </div>
             <div class="agent-card rounded-xl overflow-hidden group cursor-pointer" data-tags="Video">
                 <a href="https://runwayml.com/" target="_blank" class="block">
-                    <div class="w-full h-48"><img src="https://placehold.co/600x400/e2e8f0/64748b?text=Runway" alt="Runway Thumbnail" class="w-full h-full object-cover"></div>
-                    <div class="p-5">
-                        <h2 class="text-xl font-bold mb-2 flex items-center">
-                            <span class="text-2xl mr-3">🎬</span>
+                    <div class="w-full h-36"><img src="https://placehold.co/600x400/e2e8f0/64748b?text=Runway" alt="Runway Thumbnail" class="w-full h-full object-cover"></div>
+                    <div class="p-4">
+                        <h2 class="text-lg font-bold mb-2 flex items-center">
+                            <span class="text-xl mr-2">🎬</span>
                             <span>Runway</span>
                         </h2>
-                        <p class="text-secondary mb-4 text-sm">AI-powered video editing and generation platform.</p>
-                        <div class="flex flex-wrap gap-2 mb-4"><span class="tag text-xs font-semibold px-2.5 py-1 rounded-full">Video</span></div>
+                        <p class="text-secondary mb-3 text-sm">AI-powered video editing and generation platform.</p>
+                        <div class="flex flex-wrap gap-2 mb-3"><span class="tag text-xs font-semibold px-2.5 py-1 rounded-full">Video</span></div>
                         <p class="text-tertiary text-sm group-hover:text-[var(--accent-color)] transition-colors">runwayml.com</p>
                     </div>
                 </a>
             </div>
             <div class="agent-card rounded-xl overflow-hidden group cursor-pointer" data-tags="Research">
                 <a href="https://www.perplexity.ai/" target="_blank" class="block">
-                    <div class="w-full h-48"><img src="https://placehold.co/600x400/e2e8f0/64748b?text=Perplexity" alt="Perplexity Thumbnail" class="w-full h-full object-cover"></div>
-                    <div class="p-5">
-                        <h2 class="text-xl font-bold mb-2 flex items-center">
-                            <span class="text-2xl mr-3">🔎</span>
+                    <div class="w-full h-36"><img src="https://placehold.co/600x400/e2e8f0/64748b?text=Perplexity" alt="Perplexity Thumbnail" class="w-full h-full object-cover"></div>
+                    <div class="p-4">
+                        <h2 class="text-lg font-bold mb-2 flex items-center">
+                            <span class="text-xl mr-2">🔎</span>
                             <span>Perplexity</span>
                         </h2>
-                        <p class="text-secondary mb-4 text-sm">An AI for search and answer generation based on the latest information.</p>
-                        <div class="flex flex-wrap gap-2 mb-4"><span class="tag text-xs font-semibold px-2.5 py-1 rounded-full">Research</span></div>
+                        <p class="text-secondary mb-3 text-sm">An AI for search and answer generation based on the latest information.</p>
+                        <div class="flex flex-wrap gap-2 mb-3"><span class="tag text-xs font-semibold px-2.5 py-1 rounded-full">Research</span></div>
                         <p class="text-tertiary text-sm group-hover:text-[var(--accent-color)] transition-colors">perplexity.ai</p>
                     </div>
                 </a>
             </div>
             <div class="agent-card rounded-xl overflow-hidden group cursor-pointer" data-tags="Sound">
                 <a href="https://suno.com/" target="_blank" class="block">
-                    <div class="w-full h-48"><img src="https://placehold.co/600x400/e2e8f0/64748b?text=Suno" alt="Suno Thumbnail" class="w-full h-full object-cover"></div>
-                    <div class="p-5">
-                        <h2 class="text-xl font-bold mb-2 flex items-center">
-                            <span class="text-2xl mr-3">🎵</span>
+                    <div class="w-full h-36"><img src="https://placehold.co/600x400/e2e8f0/64748b?text=Suno" alt="Suno Thumbnail" class="w-full h-full object-cover"></div>
+                    <div class="p-4">
+                        <h2 class="text-lg font-bold mb-2 flex items-center">
+                            <span class="text-xl mr-2">🎵</span>
                             <span>Suno</span>
                         </h2>
-                        <p class="text-secondary mb-4 text-sm">Create royalty-free AI music and songs.</p>
-                        <div class="flex flex-wrap gap-2 mb-4"><span class="tag text-xs font-semibold px-2.5 py-1 rounded-full">Sound</span></div>
+                        <p class="text-secondary mb-3 text-sm">Create royalty-free AI music and songs.</p>
+                        <div class="flex flex-wrap gap-2 mb-3"><span class="tag text-xs font-semibold px-2.5 py-1 rounded-full">Sound</span></div>
                         <p class="text-tertiary text-sm group-hover:text-[var(--accent-color)] transition-colors">suno.com</p>
                     </div>
                 </a>
@@ -299,7 +301,8 @@
 
             allTags.forEach(tag => {
                 const button = document.createElement('button');
-                button.className = 'filter-btn text-sm sm:text-base px-4 py-2 rounded-full';
+                // 필터 버튼 텍스트 크기 증가
+                button.className = 'filter-btn text-base sm:text-lg px-4 py-2 rounded-full';
                 button.dataset.filter = tag;
                 button.textContent = tag;
                 filterContainer.appendChild(button);
