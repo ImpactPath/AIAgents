@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light"> <!-- Default theme is now light mode -->
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GGGI AI Playground</title>
+    <!-- Load Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Load Google Fonts (Inter) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        /* --- CSS Variables for Theming --- */
+        :root[data-theme="dark"] {
+            --bg-color: #020617;
+            --bg-aurora-1: rgba(0, 169, 157, 0.4);
+            --bg-aurora-2: rgba(74, 222, 128, 0.35);
+            --bg-aurora-stop: rgba(2, 6, 23, 0);
+            --card-bg: rgba(15, 23, 42, 0.6);
+            --card-border: rgba(255, 255, 255, 0.1);
+            --card-hover-shadow-1: rgba(0, 169, 157, 0.4);
+            --card-hover-shadow-2: rgba(74, 222, 128, 0.3);
+            --card-hover-border: rgba(0, 169, 157, 0.5);
+            --text-primary: #e2e8f0;
+            --text-secondary: #94a3b8;
+            --text-tertiary: #64748b;
+            --title-color: #5eead4; /* Title color variable */
+            --accent-color: #00A99D;
+            --accent-glow: rgba(0, 169, 157, 0.2);
+            --tag-text: #5eead4;
+            --tag-bg: rgba(20, 184, 166, 0.2);
+            --filter-hover-bg: rgba(255, 255, 255, 0.1);
+            --toggle-bg: rgba(15, 23, 42, 0.6);
+            --toggle-border: rgba(255, 255, 255, 0.1);
+            --gggi-tag-bg: rgba(0, 169, 157, 0.8);
+            --gggi-tag-text: #ffffff;
+            --logo-bg-color: #0f172a; /* slate-900 */
+        }
+
+        :root[data-theme="light"] {
+            --bg-color: #f0f9f8;
+            --bg-aurora-1: rgba(0, 169, 157, 0.15);
+            --bg-aurora-2: rgba(74, 222, 128, 0.1);
+            --bg-aurora-stop: rgba(240, 249, 248, 0);
+            --card-bg: rgba(255, 255, 255, 0.8);
+            --card-border: rgba(0, 169, 157, 0.2);
+            --card-hover-shadow-1: rgba(0, 169, 157, 0.15);
+            --card-hover-shadow-2: rgba(0, 0, 0, 0.05);
+            --card-hover-border: rgba(0, 169, 157, 0.7);
+            --text-primary: #0f172a;
+            --text-secondary: #334155;
+            --text-tertiary: #64748b;
+            --title-color: #00796b; /* Title color variable */
+            --accent-color: #00796b;
+            --accent-glow: rgba(0, 169, 157, 0.1);
+            --tag-text: #00796D;
+            --tag-bg: rgba(0, 169, 157, 0.1);
+            --filter-hover-bg: rgba(0, 0, 0, 0.05);
+            --toggle-bg: #ffffff;
+            --toggle-border: rgba(0, 0, 0, 0.08);
+            --gggi-tag-bg: #00796b;
+            --gggi-tag-text: #ffffff;
+            --logo-bg-color: #f8fafc; /* slate-50 */
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-primary);
+            overflow-x: hidden;
+            transition: background-color 0.5s ease, color 0.5s ease;
+        }
+
+        /* --- Dynamic Aurora Background --- */
+        body::before {
+            content: '';
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 200vw;
+            height: 200vh;
+            will-change: transform;
+            z-index: -1;
+            transition: background 0.5s ease;
+            background: 
+                radial-gradient(circle at 15% 25%, var(--bg-aurora-1) 0%, var(--bg-aurora-stop) 70%),
+                radial-gradient(circle at 85% 75%, var(--bg-aurora-2) 0%, var(--bg-aurora-stop) 70%);
+            animation: aurora 20s linear infinite;
+        }
+        
+        @keyframes aurora { 0% { transform: translate(-50%, -50%) rotate(0deg) scale(1); } 50% { transform: translate(-50%, -50%) rotate(180deg) scale(1.5); } 100% { transform: translate(-50%, -50%) rotate(360deg) scale(1); } }
+
+        /* --- Card Design --- */
+        .agent-card {
+            position: relative;
+            transition: all 0.3s ease;
+            background-color: var(--card-bg);
+            backdrop-filter: blur(12px);
+            border: 1px solid var(--card-border);
+            opacity: 0;
+            transform: translateY(30px);
+            animation: fade-in-up 0.6s ease-out forwards;
+        }
+        .agent-card:hover {
+            transform: translateY(-8px);
+            box-shadow: 0 10px 25px var(--card-hover-shadow-1), 0 5px 10px var(--card-hover-shadow-2);
+            border-color: var(--card-hover-border);
+        }
+        @keyframes fade-in-up { to { opacity: 1; transform: translateY(0); } }
+
+        .logo-container {
+            background-color: var(--logo-bg-color);
+            transition: background-color 0.5s ease;
+        }
+
+        /* --- GGGI Official Agent Card Style --- */
+        .gggi-official-card {
+            border-color: var(--accent-color);
+        }
+        
+        /* --- GGGI Official Badge --- */
+        .gggi-badge {
+            position: absolute;
+            top: 12px;
+            right: 12px;
+            background-color: var(--accent-color);
+            color: white;
+            font-size: 14px;
+            font-weight: 700;
+            padding: 4px 10px;
+            border-radius: 9999px;
+            letter-spacing: 0.5px;
+            z-index: 10;
+        }
+
+        /* --- Title Design --- */
+        .main-title {
+            color: var(--title-color);
+        }
+
+        /* --- Tag Style --- */
+        .tag { background-color: var(--tag-bg); color: var(--tag-text); transition: all 0.3s ease; }
+        .gggi-tag { background-color: var(--gggi-tag-bg); color: var(--gggi-tag-text); }
+        
+        /* --- Filter Buttons --- */
+        .filter-btn { transition: all 0.2s ease-in-out; border: 1px solid transparent; color: var(--text-secondary); }
+        .filter-btn.active { background-color: var(--accent-glow); color: var(--accent-color); border-color: var(--accent-color); font-weight: 600; }
+        .filter-btn:not(.active):hover { background-color: var(--filter-hover-bg); }
+        
+        .card-hidden {
+            display: none;
+        }
+        
+        /* --- Theme Toggle Switch --- */
+        #theme-toggle { background-color: var(--toggle-bg); border: 1px solid var(--toggle-border); transition: all 0.3s ease; }
+        .icon { position: absolute; transition: opacity 0.3s ease, transform 0.3s ease; }
+        #moon-icon { opacity: 0; transform: scale(0.5) rotate(-90deg); }
+        #sun-icon { opacity: 1; transform: scale(1) rotate(0deg); }
+        :root[data-theme="light"] #moon-icon { opacity: 1; transform: scale(1) rotate(0deg); }
+        :root[data-theme="light"] #sun-icon { opacity: 0; transform: scale(0.5) rotate(90deg); }
+
+    </style>
+</head>
+<body class="p-3 sm:p-4">
+
+    <div class="max-w-7xl mx-auto">
+        
+        <!-- ==================== HEADER SECTION START ==================== -->
+        <div class="flex justify-between items-start">
+            <img class="h-16 w-auto" src="images/GGGI Logo.png" alt="GGGI Logo">
+            <button id="theme-toggle" aria-label="Toggle color theme" class="relative w-12 h-12 rounded-full flex items-center justify-center cursor-pointer shadow-lg backdrop-filter backdrop-blur-sm">
+                <svg id="moon-icon" class="icon w-6 h-6 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"></path></svg>
+                <svg id="sun-icon" class="icon w-6 h-6 text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>
+            </button>
+        </div>
+
+        <header class="text-center mb-4">
+            <h1 class="main-title text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-extrabold tracking-tight">GGGI AI Playground</h1>
+            <p class="text-secondary mt-3 text-base sm:text-lg max-w-2xl mx-auto">
+                Explore a curated collection of AI tools to accelerate green growth innovations.
+            </p>
+        </header>
+        <!-- ===================== HEADER SECTION END ===================== -->
+        
+        <!-- Filter Buttons -->
+        <div id="filter-container" class="flex flex-wrap justify-center gap-x-2 gap-y-1 sm:gap-3 mb-6">
+            <button class="filter-btn active text-base sm:text-lg px-4 py-2 rounded-full" data-filter="all">All</button>
+        </div>
+
+        <!-- AI Agent Card Grid -->
+        <div id="agent-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
+            
+            <!-- ==================== GGGI OFFICIAL AGENTS START ==================== -->
+            <div class="agent-card gggi-official-card rounded-xl overflow-hidden group" data-tags="GGGI,Research,Analysis">
+                <a href="http://64.176.229.187:3005" target="_blank" rel="noopener noreferrer" class="block">
+                    <div class="gggi-badge">GGGI Official</div>
+                    <div class="w-full h-36 logo-container"><img src="https://placehold.co/600x400/00a99d/ffffff?text=GreenGrowth%0ADeep+Researcher" alt="GreenGrowth Deep Researcher Thumbnail" class="w-full h-full object-cover"></div>
+                    <div class="p-4">
+                        <!-- CHANGED: Replaced h-14 with min-h-[3.5rem] for flexible height -->
+                        <h2 class="text-lg font-bold mb-2 flex items-center min-h-[3.5rem] pr-12"><span class="text-xl mr-2">🔬</span><span>GreenGrowth Deep Researcher</span></h2>
+                        <p class="text-secondary mb-3 text-sm">Your AI research expert for green growth. Get data-driven reports and analysis instantly.</p>
+                        <div class="flex flex-wrap gap-2 mb-3">
+                            <span class="tag gggi-tag text-xs font-semibold px-2.5 py-1 rounded-full">GGGI</span>
+                            <span class="tag text-xs font-semibold px-2.5 py-1 rounded-full">Research</span>
+                            <span class="tag text-xs font-semibold px-2.5 py-1 rounded-full">Analysis</span>
+                        </div>
+                    </div>
+                </a>
+            </div>
+
+            <div class="agent-card gggi-official-card rounded-xl overflow-hidden group" data-tags="GGGI,Research,Analysis">
+                <a href="http://64.176.229.187:8088/chat/8feU2xHl55UL9xj9" target="_blank" rel="noopener noreferrer" class="block">
+                    <div class="gggi-badge">GGGI Official</div>
+                    <div class="w-full h-36 logo-container"><img src="https://placehold.co/600x400/00a99d/ffffff?text=GGGI%0AInsight+Retriever" alt="GGGI Insight Retriever Thumbnail" class="w-full h-full object-cover"></div>
+                    <div class="p-4">
+                        <!-- CHANGED: Replaced h-14 with min-h-[3.5rem] for flexible height -->
+                        <h2 class="text-lg font-bold mb-2 flex items-center min-h-[3.5rem] pr-12"><span class="text-xl mr-2">💡</span><span>GGGI Insight Retriever</span></h2>
+                        <p class="text-secondary mb-3 text-sm">Instantly find key insights and answers from all of GGGI's official publications.</p>
+                        <div class="flex flex-wrap gap-2 mb-3">
+                            <span class="tag gggi-tag text-xs font-semibold px-2.5 py-1 rounded-full">GGGI</span>
+                             <span class="tag text-xs font-semibold px-2.5 py-1 rounded-full">Research</span>
+                             <span class="tag text-xs font-semibold px-2.5 py-1 rounded-full">Analysis</span>
+                        </div>
+                    </div>
+                </a>
+            </div>
+
+            <div class="agent-card gggi-official-card rounded-xl overflow-hidden group" data-tags="GGGI,Analysis,Writing">
+                <a href="http://64.176.229.187:8088/chat/VKbCAstN3tXqqc3p" target="_blank" rel="noopener noreferrer" class="block">
+                    <div class="gggi-badge">GGGI Official</div>
+                    <div class="w-full h-36 logo-container"><img src="https://placehold.co/600x400/00a99d/ffffff?text=Bilingual%0AProposal+Analyst" alt="Bilingual Proposal Analyst Thumbnail" class="w-full h-full object-cover"></div>
+                    <div class="p-4">
+                        <!-- CHANGED: Replaced h-14 with min-h-[3.5rem] for flexible height -->
+                        <h2 class="text-lg font-bold mb-2 flex items-center min-h-[3.5rem] pr-12"><span class="text-xl mr-2">🌐</span><span>Bilingual Proposal Analyst</span></h2>
+                        <p class="text-secondary mb-3 text-sm">Analyzes English proposals and delivers key summaries in Korean, bridging language gaps.</p>
+                        <div class="flex flex-wrap gap-2 mb-3">
+                            <span class="tag gggi-tag text-xs font-semibold px-2.5 py-1 rounded-full">GGGI</span>
+                            <span class="tag text-xs font-semibold px-2.5 py-1 rounded-full">Analysis</span>
+                            <span class="tag text-xs font-semibold px-2.5 py-1 rounded-full">Writing</span>
+                        </div>
+                    </div>
+                </a>
+            </div>
+
+            <div class="agent-card gggi-official-card rounded-xl overflow-hidden group" data-tags="GGGI,Analysis,Research">
+                <a href="http://64.176.229.187:8088/chat/N5WwBWXxQckxoVZ2" target="_blank" rel="noopener noreferrer" class="block">
+                    <div class="gggi-badge">GGGI Official</div>
+                    <div class="w-full h-36 logo-container"><img src="https://placehold.co/600x400/00a99d/ffffff?text=Circular%0APlastics+Analyst" alt="Circular Plastics Analyst Thumbnail" class="w-full h-full object-cover"></div>
+                    <div class="p-4">
+                        <!-- CHANGED: Replaced h-14 with min-h-[3.5rem] for flexible height -->
+                        <h2 class="text-lg font-bold mb-2 flex items-center min-h-[3.5rem] pr-12"><span class="text-xl mr-2">♻️</span><span>Circular Plastics Analyst</span></h2>
+                        <p class="text-secondary mb-3 text-sm">Your expert on plastic pollution. Get key analysis on the circular economy.</p>
+                        <div class="flex flex-wrap gap-2 mb-3">
+                            <span class="tag gggi-tag text-xs font-semibold px-2.5 py-1 rounded-full">GGGI</span>
+                            <span class="tag text-xs font-semibold px-2.5 py-1 rounded-full">Analysis</span>
+                            <span class="tag text-xs font-semibold px-2.5 py-1 rounded-full">Research</span>
+                        </div>
+                    </div>
+                </a>
+            </div>
+
+            <div class="agent-card gggi-official-card rounded-xl overflow-hidden group" data-tags="GGGI,Analysis,Research">
+                <a href="http://64.176.229.187:8088/chat/kdMZVU78V5Z4SuZp" target="_blank" rel="noopener noreferrer" class="block">
+                    <div class="gggi-badge">GGGI Official</div>
+                    <div class="w-full h-36 logo-container"><img src="https://placehold.co/600x400/00a99d/ffffff?text=NDC+Navigator" alt="NDC Navigator Thumbnail" class="w-full h-full object-cover"></div>
+                    <div class="p-4">
+                        <!-- CHANGED: Replaced h-14 with min-h-[3.5rem] for flexible height -->
+                        <h2 class="text-lg font-bold mb-2 flex items-center min-h-[3.5rem] pr-12"><span class="text-xl mr-2">🗺️</span><span>NDC Navigator</span></h2>
+                        <p class="text-secondary mb-3 text-sm">Easily navigate and understand complex NDC reports from around the world.</p>
+                        <div class="flex flex-wrap gap-2 mb-3">
+                            <span class="tag gggi-tag text-xs font-semibold px-2.5 py-1 rounded-full">GGGI</span>
+                            <span class="tag text-xs font-semibold px-2.5 py-1 rounded-full">Analysis</span>
+                            <span class="tag text-xs font-semibold px-2.5 py-1 rounded-full">Research</span>
+                        </div>
+                    </div>
+                </a>
+            </div>
+
+            <div class="agent-card gggi-official-card rounded-xl overflow-hidden group" data-tags="GGGI,Analysis,Writing">
+                <a href="http://64.176.229.187:8088/chat/XiHditJYd4CaME38" target="_blank" rel="noopener noreferrer" class="block">
+                    <div class="gggi-badge">GGGI Official</div>
+                    <div class="w-full h-36 logo-container"><img src="https://placehold.co/600x400/00a99d/ffffff?text=Proposal+Sentinel" alt="Proposal Sentinel Thumbnail" class="w-full h-full object-cover"></div>
+                    <div class="p-4">
+                        <!-- CHANGED: Replaced h-14 with min-h-[3.5rem] for flexible height -->
+                        <h2 class="text-lg font-bold mb-2 flex items-center min-h-[3.5rem] pr-12"><span class="text-xl mr-2">✅</span><span>Proposal Sentinel</span></h2>
+                        <p class="text-secondary mb-3 text-sm">Perfect your proposals with AI-powered reviews for logic, clarity, and quality.</p>
+                        <div class="flex flex-wrap gap-2 mb-3">
+                            <span class="tag gggi-tag text-xs font-semibold px-2.5 py-1 rounded-full">GGGI</span>
+                            <span class="tag text-xs font-semibold px-2.5 py-1 rounded-full">Analysis</span>
+                            <span class="tag text-xs font-semibold px-2.5 py-1 rounded-full">Writing</span>
+                        </div>
+                    </div>
+                </a>
+            </div>
+            <!-- ==================== GGGI OFFICIAL AGENTS END ==================== -->
+
+
+            <!-- ==================== EXTERNAL AGENTS START ==================== -->
+            <div class="agent-card rounded-xl overflow-hidden group" data-tags="Writing">
+                <a href="https://chat.openai.com/" target="_blank" rel="noopener noreferrer" class="block">
+                    <div class="w-full h-36 logo-container p-4"><img src="images/chatgpt logo.png" alt="ChatGPT Logo" class="w-full h-full object-contain"></div>
+                    <div class="p-4">
+                        <!-- CHANGED: Replaced h-14 with min-h-[3.5rem] for flexible height -->
+                        <h2 class="text-lg font-bold mb-2 flex items-center min-h-[3.5rem]"><span class="text-xl mr-2">✨</span><span>ChatGPT</span></h2>
+                        <p class="text-secondary mb-3 text-sm">A versatile AI for various tasks.</p>
+                        <div class="flex flex-wrap gap-2 mb-3">
+                            <span class="tag text-xs font-semibold px-2.5 py-1 rounded-full">Writing</span>
+                        </div>
+                    </div>
+                </a>
+            </div>
+            <div class="agent-card rounded-xl overflow-hidden group" data-tags="Writing">
+                 <a href="https://claude.ai/" target="_blank" rel="noopener noreferrer" class="block">
+                    <div class="w-full h-36 logo-container p-4"><img src="images/claude logo.png" alt="Claude Logo" class="w-full h-full object-contain"></div>
+                    <div class="p-4">
+                        <!-- CHANGED: Replaced h-14 with min-h-[3.5rem] for flexible height -->
+                        <h2 class="text-lg font-bold mb-2 flex items-center min-h-[3.5rem]"><span class="text-xl mr-2">✍️</span><span>Claude</span></h2>
+                        <p class="text-secondary mb-3 text-sm">An AI specialized in natural conversation and writing.</p>
+                        <div class="flex flex-wrap gap-2 mb-3">
+                            <span class="tag text-xs font-semibold px-2.5 py-1 rounded-full">Writing</span>
+                        </div>
+                    </div>
+                </a>
+            </div>
+            <div class="agent-card rounded-xl overflow-hidden group" data-tags="Media">
+                <a href="https://www.midjourney.com/" target="_blank" rel="noopener noreferrer" class="block">
+                    <div class="w-full h-36 logo-container p-4"><img src="images/midjourney logo.png" alt="Midjourney Logo" class="w-full h-full object-contain"></div>
+                    <div class="p-4">
+                        <!-- CHANGED: Replaced h-14 with min-h-[3.5rem] for flexible height -->
+                        <h2 class="text-lg font-bold mb-2 flex items-center min-h-[3.5rem]"><span class="text-xl mr-2">🎨</span><span>Midjourney</span></h2>
+                        <p class="text-secondary mb-3 text-sm">Generates high-quality images from text.</p>
+                        <div class="flex flex-wrap gap-2 mb-3"><span class="tag text-xs font-semibold px-2.5 py-1 rounded-full">Media</span></div>
+                    </div>
+                </a>
+            </div>
+            <div class="agent-card rounded-xl overflow-hidden group" data-tags="Research">
+                <a href="https://www.perplexity.ai/" target="_blank" rel="noopener noreferrer" class="block">
+                    <div class="w-full h-36 logo-container p-4"><img src="images/perplexity logo.png" alt="Perplexity Logo" class="w-full h-full object-contain"></div>
+                    <div class="p-4">
+                        <!-- CHANGED: Replaced h-14 with min-h-[3.5rem] for flexible height -->
+                        <h2 class="text-lg font-bold mb-2 flex items-center min-h-[3.5rem]"><span class="text-xl mr-2">🔎</span><span>Perplexity</span></h2>
+                        <p class="text-secondary mb-3 text-sm">An AI for search and answer generation based on the latest information.</p>
+                        <div class="flex flex-wrap gap-2 mb-3">
+                            <span class="tag text-xs font-semibold px-2.5 py-1 rounded-full">Research</span></div>
+                    </div>
+                </a>
+            </div>
+            <div class="agent-card rounded-xl overflow-hidden group" data-tags="Media">
+                <a href="https://runwayml.com/" target="_blank" rel="noopener noreferrer" class="block">
+                    <div class="w-full h-36 logo-container p-4"><img src="images/runway logo.png" alt="Runway Logo" class="w-full h-full object-contain"></div>
+                    <div class="p-4">
+                        <!-- CHANGED: Replaced h-14 with min-h-[3.5rem] for flexible height -->
+                        <h2 class="text-lg font-bold mb-2 flex items-center min-h-[3.5rem]"><span class="text-xl mr-2">🎬</span><span>Runway</span></h2>
+                        <p class="text-secondary mb-3 text-sm">AI-powered video editing and generation platform.</p>
+                        <div class="flex flex-wrap gap-2 mb-3"><span class="tag text-xs font-semibold px-2.5 py-1 rounded-full">Media</span></div>
+                    </div>
+                </a>
+            </div>
+            <div class="agent-card rounded-xl overflow-hidden group" data-tags="Media">
+                <a href="https://suno.com/" target="_blank" rel="noopener noreferrer" class="block">
+                    <div class="w-full h-36 logo-container p-4"><img src="images/suno logo.png" alt="Suno Logo" class="w-full h-full object-contain"></div>
+                    <div class="p-4">
+                        <!-- CHANGED: Replaced h-14 with min-h-[3.5rem] for flexible height -->
+                        <h2 class="text-lg font-bold mb-2 flex items-center min-h-[3.5rem]"><span class="text-xl mr-2">🎵</span><span>Suno</span></h2>
+                        <p class="text-secondary mb-3 text-sm">Create royalty-free AI music and songs.</p>
+                        <div class="flex flex-wrap gap-2 mb-3">
+                            <span class="tag text-xs font-semibold px-2.5 py-1 rounded-full">Media</span></div>
+                    </div>
+                </a>
+            </div>
+             <!-- ==================== EXTERNAL AGENTS END ==================== -->
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const themeToggle = document.getElementById('theme-toggle');
+            const htmlEl = document.documentElement;
+
+            // Theme setup function
+            const setTheme = (theme) => {
+                htmlEl.dataset.theme = theme;
+                localStorage.setItem('gggi_theme', theme);
+            };
+
+            // Event listener for the toggle button
+            themeToggle.addEventListener('click', () => {
+                const newTheme = htmlEl.dataset.theme === 'dark' ? 'light' : 'dark';
+                setTheme(newTheme);
+            });
+
+            // Apply saved theme on page load, defaulting to light
+            const savedTheme = localStorage.getItem('gggi_theme') || 'light';
+            setTheme(savedTheme);
+
+            // Filtering and animation logic
+            const agentCards = document.querySelectorAll('.agent-card');
+            const filterContainer = document.getElementById('filter-container');
+            
+            // Staggered fade-in animation
+            agentCards.forEach((card, index) => {
+                card.style.animationDelay = `${index * 100}ms`;
+            });
+
+            // Dynamically create filter buttons
+            const allTags = new Set();
+            const gggiTag = 'GGGI'; // Define GGGI tag as a constant
+
+            agentCards.forEach(card => {
+                const tags = card.dataset.tags.split(',');
+                tags.forEach(tag => allTags.add(tag.trim()));
+            });
+            
+            // Add GGGI filter button first if it exists
+            if (allTags.has(gggiTag)) {
+                const button = document.createElement('button');
+                button.className = 'filter-btn text-base sm:text-lg px-4 py-2 rounded-full';
+                button.dataset.filter = gggiTag;
+                button.textContent = gggiTag;
+                filterContainer.appendChild(button);
+            }
+
+            // Add remaining tag buttons, sorted alphabetically
+            const sortedTags = Array.from(allTags).filter(tag => tag !== gggiTag).sort();
+            sortedTags.forEach(tag => {
+                const button = document.createElement('button');
+                button.className = 'filter-btn text-base sm:text-lg px-4 py-2 rounded-full';
+                button.dataset.filter = tag;
+                button.textContent = tag;
+                filterContainer.appendChild(button);
+            });
+
+
+            // Filtering logic
+            filterContainer.addEventListener('click', (e) => {
+                if (!e.target.matches('.filter-btn')) return;
+
+                // Deactivate previously active button
+                if (filterContainer.querySelector('.active')) {
+                    filterContainer.querySelector('.active').classList.remove('active');
+                }
+                // Activate clicked button
+                e.target.classList.add('active');
+
+                const filter = e.target.dataset.filter;
+                agentCards.forEach(card => {
+                    const cardTags = card.dataset.tags || '';
+                    const tagArray = cardTags.split(',').map(t => t.trim());
+                    const isVisible = (filter === 'all' || tagArray.includes(filter));
+                    
+                    card.classList.toggle('card-hidden', !isVisible);
+                });
+            });
+        });
+    </script>
+
+</body>
+</html>
