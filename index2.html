@@ -169,7 +169,8 @@
         
         <!-- ==================== HEADER SECTION START ==================== -->
         <div class="flex justify-between items-start">
-            <img class="h-16 w-auto" src="images/GGGI Logo.png" alt="GGGI Logo">
+            <!-- CHANGED: Filename case updated -->
+            <img class="h-16 w-auto" src="images/GGGI logo.png" alt="GGGI Logo">
             <button id="theme-toggle" aria-label="Toggle color theme" class="relative w-12 h-12 rounded-full flex items-center justify-center cursor-pointer shadow-lg backdrop-filter backdrop-blur-sm">
                 <svg id="moon-icon" class="icon w-6 h-6 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"></path></svg>
                 <svg id="sun-icon" class="icon w-6 h-6 text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>
@@ -185,7 +186,8 @@
         <!-- ===================== HEADER SECTION END ===================== -->
         
         <!-- Filter Buttons -->
-        <div id="filter-container" class="flex flex-wrap justify-center gap-x-2 gap-y-1 sm:gap-3 mb-6">
+        <!-- CHANGED: Reduced bottom margin from mb-6 to mb-4 to tighten spacing -->
+        <div id="filter-container" class="flex flex-wrap justify-center gap-x-2 gap-y-1 sm:gap-3 mb-4">
             <button class="filter-btn active text-base sm:text-lg px-4 py-2 rounded-full" data-filter="all">All</button>
         </div>
 
@@ -195,11 +197,14 @@
             <!-- ==================== GGGI OFFICIAL AGENTS START ==================== -->
             <div class="agent-card gggi-official-card rounded-xl overflow-hidden group" data-tags="GGGI,Research,Analysis">
                 <a href="http://64.176.229.187:3005" target="_blank" rel="noopener noreferrer" class="block">
-                    <div class="gggi-badge">GGGI Official</div>
-                    <div class="w-full h-36 logo-container"><img src="https://placehold.co/600x400/00a99d/ffffff?text=GreenGrowth%0ADeep+Researcher" alt="GreenGrowth Deep Researcher Thumbnail" class="w-full h-full object-cover"></div>
+                    <!-- CHANGED: Badge moved inside logo-container and container is now relative -->
+                    <div class="w-full h-36 logo-container relative">
+                        <div class="gggi-badge">GGGI Official</div>
+                        <img src="https://placehold.co/600x400/00a99d/ffffff?text=GreenGrowth%0ADeep+Researcher" alt="GreenGrowth Deep Researcher Thumbnail" class="w-full h-full object-cover">
+                    </div>
                     <div class="p-4">
-                        <!-- CHANGED: Replaced h-14 with min-h-[3.5rem] for flexible height -->
-                        <h2 class="text-lg font-bold mb-2 flex items-center min-h-[3.5rem] pr-12"><span class="text-xl mr-2">🔬</span><span>GreenGrowth Deep Researcher</span></h2>
+                        <!-- CHANGED: Removed unnecessary padding, kept min-height for stability -->
+                        <h2 class="text-lg font-bold mb-2 flex items-center min-h-[3.5rem]"><span class="text-xl mr-2">🔬</span><span>GreenGrowth Deep Researcher</span></h2>
                         <p class="text-secondary mb-3 text-sm">Your AI research expert for green growth. Get data-driven reports and analysis instantly.</p>
                         <div class="flex flex-wrap gap-2 mb-3">
                             <span class="tag gggi-tag text-xs font-semibold px-2.5 py-1 rounded-full">GGGI</span>
@@ -212,11 +217,12 @@
 
             <div class="agent-card gggi-official-card rounded-xl overflow-hidden group" data-tags="GGGI,Research,Analysis">
                 <a href="http://64.176.229.187:8088/chat/8feU2xHl55UL9xj9" target="_blank" rel="noopener noreferrer" class="block">
-                    <div class="gggi-badge">GGGI Official</div>
-                    <div class="w-full h-36 logo-container"><img src="https://placehold.co/600x400/00a99d/ffffff?text=GGGI%0AInsight+Retriever" alt="GGGI Insight Retriever Thumbnail" class="w-full h-full object-cover"></div>
+                    <div class="w-full h-36 logo-container relative">
+                        <div class="gggi-badge">GGGI Official</div>
+                        <img src="https://placehold.co/600x400/00a99d/ffffff?text=GGGI%0AInsight+Retriever" alt="GGGI Insight Retriever Thumbnail" class="w-full h-full object-cover">
+                    </div>
                     <div class="p-4">
-                        <!-- CHANGED: Replaced h-14 with min-h-[3.5rem] for flexible height -->
-                        <h2 class="text-lg font-bold mb-2 flex items-center min-h-[3.5rem] pr-12"><span class="text-xl mr-2">💡</span><span>GGGI Insight Retriever</span></h2>
+                        <h2 class="text-lg font-bold mb-2 flex items-center min-h-[3.5rem]"><span class="text-xl mr-2">💡</span><span>GGGI Insight Retriever</span></h2>
                         <p class="text-secondary mb-3 text-sm">Instantly find key insights and answers from all of GGGI's official publications.</p>
                         <div class="flex flex-wrap gap-2 mb-3">
                             <span class="tag gggi-tag text-xs font-semibold px-2.5 py-1 rounded-full">GGGI</span>
@@ -229,11 +235,12 @@
 
             <div class="agent-card gggi-official-card rounded-xl overflow-hidden group" data-tags="GGGI,Analysis,Writing">
                 <a href="http://64.176.229.187:8088/chat/VKbCAstN3tXqqc3p" target="_blank" rel="noopener noreferrer" class="block">
-                    <div class="gggi-badge">GGGI Official</div>
-                    <div class="w-full h-36 logo-container"><img src="https://placehold.co/600x400/00a99d/ffffff?text=Bilingual%0AProposal+Analyst" alt="Bilingual Proposal Analyst Thumbnail" class="w-full h-full object-cover"></div>
+                    <div class="w-full h-36 logo-container relative">
+                        <div class="gggi-badge">GGGI Official</div>
+                        <img src="https://placehold.co/600x400/00a99d/ffffff?text=Bilingual%0AProposal+Analyst" alt="Bilingual Proposal Analyst Thumbnail" class="w-full h-full object-cover">
+                    </div>
                     <div class="p-4">
-                        <!-- CHANGED: Replaced h-14 with min-h-[3.5rem] for flexible height -->
-                        <h2 class="text-lg font-bold mb-2 flex items-center min-h-[3.5rem] pr-12"><span class="text-xl mr-2">🌐</span><span>Bilingual Proposal Analyst</span></h2>
+                        <h2 class="text-lg font-bold mb-2 flex items-center min-h-[3.5rem]"><span class="text-xl mr-2">🌐</span><span>Bilingual Proposal Analyst</span></h2>
                         <p class="text-secondary mb-3 text-sm">Analyzes English proposals and delivers key summaries in Korean, bridging language gaps.</p>
                         <div class="flex flex-wrap gap-2 mb-3">
                             <span class="tag gggi-tag text-xs font-semibold px-2.5 py-1 rounded-full">GGGI</span>
@@ -246,11 +253,12 @@
 
             <div class="agent-card gggi-official-card rounded-xl overflow-hidden group" data-tags="GGGI,Analysis,Research">
                 <a href="http://64.176.229.187:8088/chat/N5WwBWXxQckxoVZ2" target="_blank" rel="noopener noreferrer" class="block">
-                    <div class="gggi-badge">GGGI Official</div>
-                    <div class="w-full h-36 logo-container"><img src="https://placehold.co/600x400/00a99d/ffffff?text=Circular%0APlastics+Analyst" alt="Circular Plastics Analyst Thumbnail" class="w-full h-full object-cover"></div>
+                    <div class="w-full h-36 logo-container relative">
+                        <div class="gggi-badge">GGGI Official</div>
+                        <img src="https://placehold.co/600x400/00a99d/ffffff?text=Circular%0APlastics+Analyst" alt="Circular Plastics Analyst Thumbnail" class="w-full h-full object-cover">
+                    </div>
                     <div class="p-4">
-                        <!-- CHANGED: Replaced h-14 with min-h-[3.5rem] for flexible height -->
-                        <h2 class="text-lg font-bold mb-2 flex items-center min-h-[3.5rem] pr-12"><span class="text-xl mr-2">♻️</span><span>Circular Plastics Analyst</span></h2>
+                        <h2 class="text-lg font-bold mb-2 flex items-center min-h-[3.5rem]"><span class="text-xl mr-2">♻️</span><span>Circular Plastics Analyst</span></h2>
                         <p class="text-secondary mb-3 text-sm">Your expert on plastic pollution. Get key analysis on the circular economy.</p>
                         <div class="flex flex-wrap gap-2 mb-3">
                             <span class="tag gggi-tag text-xs font-semibold px-2.5 py-1 rounded-full">GGGI</span>
@@ -263,11 +271,12 @@
 
             <div class="agent-card gggi-official-card rounded-xl overflow-hidden group" data-tags="GGGI,Analysis,Research">
                 <a href="http://64.176.229.187:8088/chat/kdMZVU78V5Z4SuZp" target="_blank" rel="noopener noreferrer" class="block">
-                    <div class="gggi-badge">GGGI Official</div>
-                    <div class="w-full h-36 logo-container"><img src="https://placehold.co/600x400/00a99d/ffffff?text=NDC+Navigator" alt="NDC Navigator Thumbnail" class="w-full h-full object-cover"></div>
+                    <div class="w-full h-36 logo-container relative">
+                        <div class="gggi-badge">GGGI Official</div>
+                        <img src="https://placehold.co/600x400/00a99d/ffffff?text=NDC+Navigator" alt="NDC Navigator Thumbnail" class="w-full h-full object-cover">
+                    </div>
                     <div class="p-4">
-                        <!-- CHANGED: Replaced h-14 with min-h-[3.5rem] for flexible height -->
-                        <h2 class="text-lg font-bold mb-2 flex items-center min-h-[3.5rem] pr-12"><span class="text-xl mr-2">🗺️</span><span>NDC Navigator</span></h2>
+                        <h2 class="text-lg font-bold mb-2 flex items-center min-h-[3.5rem]"><span class="text-xl mr-2">🗺️</span><span>NDC Navigator</span></h2>
                         <p class="text-secondary mb-3 text-sm">Easily navigate and understand complex NDC reports from around the world.</p>
                         <div class="flex flex-wrap gap-2 mb-3">
                             <span class="tag gggi-tag text-xs font-semibold px-2.5 py-1 rounded-full">GGGI</span>
@@ -280,11 +289,12 @@
 
             <div class="agent-card gggi-official-card rounded-xl overflow-hidden group" data-tags="GGGI,Analysis,Writing">
                 <a href="http://64.176.229.187:8088/chat/XiHditJYd4CaME38" target="_blank" rel="noopener noreferrer" class="block">
-                    <div class="gggi-badge">GGGI Official</div>
-                    <div class="w-full h-36 logo-container"><img src="https://placehold.co/600x400/00a99d/ffffff?text=Proposal+Sentinel" alt="Proposal Sentinel Thumbnail" class="w-full h-full object-cover"></div>
+                    <div class="w-full h-36 logo-container relative">
+                        <div class="gggi-badge">GGGI Official</div>
+                        <img src="https://placehold.co/600x400/00a99d/ffffff?text=Proposal+Sentinel" alt="Proposal Sentinel Thumbnail" class="w-full h-full object-cover">
+                    </div>
                     <div class="p-4">
-                        <!-- CHANGED: Replaced h-14 with min-h-[3.5rem] for flexible height -->
-                        <h2 class="text-lg font-bold mb-2 flex items-center min-h-[3.5rem] pr-12"><span class="text-xl mr-2">✅</span><span>Proposal Sentinel</span></h2>
+                        <h2 class="text-lg font-bold mb-2 flex items-center min-h-[3.5rem]"><span class="text-xl mr-2">✅</span><span>Proposal Sentinel</span></h2>
                         <p class="text-secondary mb-3 text-sm">Perfect your proposals with AI-powered reviews for logic, clarity, and quality.</p>
                         <div class="flex flex-wrap gap-2 mb-3">
                             <span class="tag gggi-tag text-xs font-semibold px-2.5 py-1 rounded-full">GGGI</span>
@@ -302,7 +312,6 @@
                 <a href="https://chat.openai.com/" target="_blank" rel="noopener noreferrer" class="block">
                     <div class="w-full h-36 logo-container p-4"><img src="images/chatgpt logo.png" alt="ChatGPT Logo" class="w-full h-full object-contain"></div>
                     <div class="p-4">
-                        <!-- CHANGED: Replaced h-14 with min-h-[3.5rem] for flexible height -->
                         <h2 class="text-lg font-bold mb-2 flex items-center min-h-[3.5rem]"><span class="text-xl mr-2">✨</span><span>ChatGPT</span></h2>
                         <p class="text-secondary mb-3 text-sm">A versatile AI for various tasks.</p>
                         <div class="flex flex-wrap gap-2 mb-3">
@@ -315,7 +324,6 @@
                  <a href="https://claude.ai/" target="_blank" rel="noopener noreferrer" class="block">
                     <div class="w-full h-36 logo-container p-4"><img src="images/claude logo.png" alt="Claude Logo" class="w-full h-full object-contain"></div>
                     <div class="p-4">
-                        <!-- CHANGED: Replaced h-14 with min-h-[3.5rem] for flexible height -->
                         <h2 class="text-lg font-bold mb-2 flex items-center min-h-[3.5rem]"><span class="text-xl mr-2">✍️</span><span>Claude</span></h2>
                         <p class="text-secondary mb-3 text-sm">An AI specialized in natural conversation and writing.</p>
                         <div class="flex flex-wrap gap-2 mb-3">
@@ -328,7 +336,6 @@
                 <a href="https://www.midjourney.com/" target="_blank" rel="noopener noreferrer" class="block">
                     <div class="w-full h-36 logo-container p-4"><img src="images/midjourney logo.png" alt="Midjourney Logo" class="w-full h-full object-contain"></div>
                     <div class="p-4">
-                        <!-- CHANGED: Replaced h-14 with min-h-[3.5rem] for flexible height -->
                         <h2 class="text-lg font-bold mb-2 flex items-center min-h-[3.5rem]"><span class="text-xl mr-2">🎨</span><span>Midjourney</span></h2>
                         <p class="text-secondary mb-3 text-sm">Generates high-quality images from text.</p>
                         <div class="flex flex-wrap gap-2 mb-3"><span class="tag text-xs font-semibold px-2.5 py-1 rounded-full">Media</span></div>
@@ -339,7 +346,6 @@
                 <a href="https://www.perplexity.ai/" target="_blank" rel="noopener noreferrer" class="block">
                     <div class="w-full h-36 logo-container p-4"><img src="images/perplexity logo.png" alt="Perplexity Logo" class="w-full h-full object-contain"></div>
                     <div class="p-4">
-                        <!-- CHANGED: Replaced h-14 with min-h-[3.5rem] for flexible height -->
                         <h2 class="text-lg font-bold mb-2 flex items-center min-h-[3.5rem]"><span class="text-xl mr-2">🔎</span><span>Perplexity</span></h2>
                         <p class="text-secondary mb-3 text-sm">An AI for search and answer generation based on the latest information.</p>
                         <div class="flex flex-wrap gap-2 mb-3">
@@ -351,7 +357,6 @@
                 <a href="https://runwayml.com/" target="_blank" rel="noopener noreferrer" class="block">
                     <div class="w-full h-36 logo-container p-4"><img src="images/runway logo.png" alt="Runway Logo" class="w-full h-full object-contain"></div>
                     <div class="p-4">
-                        <!-- CHANGED: Replaced h-14 with min-h-[3.5rem] for flexible height -->
                         <h2 class="text-lg font-bold mb-2 flex items-center min-h-[3.5rem]"><span class="text-xl mr-2">🎬</span><span>Runway</span></h2>
                         <p class="text-secondary mb-3 text-sm">AI-powered video editing and generation platform.</p>
                         <div class="flex flex-wrap gap-2 mb-3"><span class="tag text-xs font-semibold px-2.5 py-1 rounded-full">Media</span></div>
@@ -362,7 +367,6 @@
                 <a href="https://suno.com/" target="_blank" rel="noopener noreferrer" class="block">
                     <div class="w-full h-36 logo-container p-4"><img src="images/suno logo.png" alt="Suno Logo" class="w-full h-full object-contain"></div>
                     <div class="p-4">
-                        <!-- CHANGED: Replaced h-14 with min-h-[3.5rem] for flexible height -->
                         <h2 class="text-lg font-bold mb-2 flex items-center min-h-[3.5rem]"><span class="text-xl mr-2">🎵</span><span>Suno</span></h2>
                         <p class="text-secondary mb-3 text-sm">Create royalty-free AI music and songs.</p>
                         <div class="flex flex-wrap gap-2 mb-3">
