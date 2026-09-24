@@ -22,7 +22,7 @@ share one yt-dlp extraction.
 
 ```
 app/main.py       FastAPI app: API endpoints, /mcp, serves static/
-app/mcp_server.py MCP server (tools get_video_info and get_subtitles)
+app/mcp_server.py MCP server (tools get_video_info, get_subtitles, get_download_link)
 app/youtube.py    URL parsing, yt-dlp wrapper, TTL cache
 app/convert.py    pure VTT/SRT parsing and SRT/VTT/TXT rendering
 static/index.html single-file UI
@@ -79,8 +79,12 @@ rebuilt `https://www.youtube.com/watch?v=<id>` URL to yt-dlp, never the raw user
 ## Use it from Claude and ChatGPT (MCP)
 
 The app also serves an MCP (Model Context Protocol) server at `https://<your-host>/mcp` (streamable
-HTTP) with two tools: `get_video_info` (downloadable tracks and a recommended one) and `get_subtitles`
-(text, SRT, or VTT with the metadata header; long output is truncated at `max_chars`).
+HTTP) with three tools: `get_video_info` (downloadable tracks, a recommended one, and the menu options),
+`get_subtitles` (text, SRT, or VTT with the metadata header; long output is truncated at `max_chars`) and
+`get_download_link` (a clickable `/api/download` link for the chosen track, format and layout, without
+fetching the subtitles; it uses `PUBLIC_BASE_URL`, else `RENDER_EXTERNAL_URL`, else the request's host).
+When you paste only a link, the model lists the tracks, formats, layouts and actions (download link,
+summary, translation, key points) and waits for your choice.
 
 Set `MCP_API_KEY` on the host, then use `https://<your-host>/mcp?key=<value>` as the URL (or send
 `Authorization: Bearer <value>` where the client supports custom headers).
@@ -103,7 +107,7 @@ language; the model translates the text itself.
 | `YTDLP_COOKIES_CONTENT` | The full text of a Netscape-format `cookies.txt` (for hosts where you can only set secrets, not files). Written once per process to a private temp file (mode 0600). Literal `\n` sequences are turned back into newlines if the secrets UI flattened them. |
 | `YTDLP_PROXY` | Proxy URL for yt-dlp, for example `http://user:pass@host:port` or `socks5://host:1080`. |
 | `MCP_API_KEY` | Secret required on every `/mcp` request (as `?key=`, `Authorization: Bearer`, or `X-API-Key`). Unset means the MCP endpoint is open to anyone (a warning is logged at startup). The web UI and REST API never need it. |
-| `PUBLIC_BASE_URL` | Public URL of the deployment, for example `https://user-youtube-subtitles.hf.space`. Listed as the server in `/openapi.json` so it can be imported into a Custom GPT Action. |
+| `PUBLIC_BASE_URL` | Public URL of the deployment, for example `https://user-youtube-subtitles.hf.space`. Listed as the server in `/openapi.json` so it can be imported into a Custom GPT Action, and used by the MCP tool `get_download_link` to build full download links. |
 | `PORT` | Listening port inside the Docker image (default 7860). |
 | `POT_PROVIDER_URL` | Where the PO token provider listens (default `http://127.0.0.1:4416`, started by `start.sh` in the Docker image). |
 | `TOKEN_TTL` | Hours the provider caches a PO token (default 6). |
@@ -116,11 +120,14 @@ Running on a home network avoids YouTube's data-center IP blocks entirely, and T
 app a stable public HTTPS address for free.
 
 1. Install Tailscale from https://tailscale.com/download/mac and sign in.
-2. Register the app as a LaunchAgent (starts at login, restarts on crash):
-   `scripts/mac/install_launch_agent.sh <MCP_API_KEY>` from `youtube-subtitles/` with the virtualenv created.
-3. Publish it: `/Applications/Tailscale.app/Contents/MacOS/Tailscale funnel --bg 7860`. The printed
+2. Publish port 7860: `/Applications/Tailscale.app/Contents/MacOS/Tailscale funnel --bg 7860`. The printed
    `https://<mac-name>.<tailnet>.ts.net/` is your web app; `/mcp?key=<MCP_API_KEY>` on it is the MCP URL.
    The Funnel setting persists across reboots as long as Tailscale starts at login.
+3. Register the app as a LaunchAgent (starts at login, restarts on crash), from `youtube-subtitles/` with
+   the virtualenv created:
+   `scripts/mac/install_launch_agent.sh <MCP_API_KEY> 7860 https://<mac-name>.<tailnet>.ts.net`.
+   The third argument (the Funnel URL) is optional but recommended: it becomes `PUBLIC_BASE_URL`, so the
+   download links the MCP tools hand out always point at your public address.
 4. Keep the Mac awake (System Settings > Energy or Displays > prevent automatic sleeping) and enable
    automatic login so the LaunchAgent starts without a user at the keyboard.
 

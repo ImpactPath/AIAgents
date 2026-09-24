@@ -8,6 +8,7 @@ import re
 import tempfile
 import threading
 import time
+import unicodedata
 from dataclasses import dataclass, field
 from datetime import datetime
 from urllib.parse import parse_qs, urlparse
@@ -111,6 +112,24 @@ class VideoInfo:
             "track_lang": track.lang,
             "track_auto": track.auto,
         }
+
+
+def safe_title(title: str, fallback: str) -> str:
+    """Make a title safe for a filename: no reserved chars, collapsed spaces, max 80 chars."""
+    name = "".join(ch for ch in title if unicodedata.category(ch)[0] != "C")
+    name = re.sub(r'[\\/:*?"<>|]+', " ", name)
+    name = re.sub(r"\s+", " ", name).strip(" .")
+    name = name[:80].strip(" .")
+    return name or fallback
+
+
+def download_filename(info: VideoInfo, lang: str, auto: bool, fmt: str) -> tuple[str, str]:
+    """(filename, ASCII fallback) used by /api/download, e.g. "Title.en.auto.txt"."""
+    title = safe_title(info.title, info.video_id)
+    lang_part = re.sub(r"[^A-Za-z0-9_-]", "", lang) or "sub"
+    suffix = f".{lang_part}{'.auto' if auto else ''}.{fmt}"
+    ascii_title = title if title.isascii() else info.video_id
+    return title + suffix, ascii_title + suffix
 
 
 def parse_video_id(text: str | None) -> str | None:

@@ -1,5 +1,7 @@
 """MCP endpoint tests: raw JSON-RPC over streamable HTTP (stateless, JSON responses), yt-dlp mocked."""
 
+from urllib.parse import parse_qs, urlsplit
+
 import pytest
 from fastapi.testclient import TestClient
 
@@ -49,6 +51,7 @@ def info_holder(monkeypatch):
     monkeypatch.setattr(youtube, "fetch_subtitle_text", fake_sub)
     monkeypatch.delenv("MCP_API_KEY", raising=False)
     monkeypatch.delenv("PUBLIC_BASE_URL", raising=False)
+    monkeypatch.delenv("RENDER_EXTERNAL_URL", raising=False)
     return holder
 
 
@@ -82,12 +85,14 @@ def test_initialize_and_tools_list(client):
     assert r.status_code == 200 and r.headers["content-type"].startswith("application/json")
     result = r.json()["result"]
     assert result["serverInfo"]["name"] == "youtube-subtitles"
-    assert "get_video_info first" in result["instructions"]
+    instructions = result["instructions"]
+    assert "call get_video_info only" in instructions and "get_download_link" in instructions
+    assert "translate the text yourself" in instructions
     note = client.post("/mcp", json={"jsonrpc": "2.0", "method": "notifications/initialized"}, headers=HEADERS)
     assert note.status_code == 202
 
     tools = {t["name"]: t for t in rpc(client, "tools/list", id=2).json()["result"]["tools"]}
-    assert set(tools) == {"get_video_info", "get_subtitles"}
+    assert set(tools) == {"get_video_info", "get_subtitles", "get_download_link"}
     info_tool, subs_tool = tools["get_video_info"], tools["get_subtitles"]
     assert info_tool["inputSchema"]["required"] == ["url"]
     assert {"tracks", "recommended", "original_language", "published"} <= set(info_tool["outputSchema"]["properties"])
@@ -97,12 +102,19 @@ def test_initialize_and_tools_list(client):
     assert props["layout"]["enum"] == ["paragraphs", "sentences", "cues"]
     assert props["max_chars"]["default"] == 200000 and props["include_header"]["default"] is True
     assert "rate-limited" in subs_tool["description"] and not subs_tool["description"].startswith(" ")
+    assert {"options", "menu_hint"} <= set(info_tool["outputSchema"]["required"])
+    link_tool = tools["get_download_link"]
+    link_props = link_tool["inputSchema"]["properties"]
+    assert link_tool["inputSchema"]["required"] == ["url"] and "ctx" not in link_props
+    assert set(link_props) == {"url", "lang", "auto", "fmt", "layout", "include_header"}
+    assert link_props["fmt"]["enum"] == ["txt", "srt", "vtt"] and link_props["layout"]["default"] == "paragraphs"
+    assert {"download_url", "web_app_url", "filename", "track", "note"} <= set(link_tool["outputSchema"]["properties"])
 
 
 def test_mcp_path_without_and_with_trailing_slash(client):
     for path in ("/mcp", "/mcp/"):
         r = rpc(client, "tools/list", path=path, follow_redirects=False)
-        assert r.status_code == 200 and len(r.json()["result"]["tools"]) == 2
+        assert r.status_code == 200 and len(r.json()["result"]["tools"]) == 3
 
 
 def test_get_video_info_filters_and_orders(client):
@@ -116,6 +128,11 @@ def test_get_video_info_filters_and_orders(client):
     assert data["duration"] == "03:32" and data["duration_seconds"] == 212
     assert data["published"] == "2009-10-25" and data["original_language"] == "en"
     assert data["url"] == f"https://www.youtube.com/watch?v={VID}"
+    assert [f["id"] for f in data["options"]["formats"]] == ["txt", "srt", "vtt"]
+    assert data["options"]["formats"][0] == {"id": "txt", "label": "Plain text"}
+    assert [x["id"] for x in data["options"]["layouts"]] == ["paragraphs", "sentences", "cues"]
+    assert data["options"]["actions"] == ["download_link", "summary", "translation", "key_points"]
+    assert "wait" in data["menu_hint"]
 
 
 def test_get_video_info_without_orig_track_keeps_one_auto(client, info_holder):
@@ -178,6 +195,92 @@ def test_get_subtitles_truncates_at_line_boundary(client, info_holder):
     assert text_of(call(client, "get_subtitles", url=VID, max_chars=10**6)) == text_of(call(client, "get_subtitles", url=VID))
 
 
+def link_query(download_url):
+    parts = urlsplit(download_url)
+    return parts, {k: v[0] for k, v in parse_qs(parts.query).items()}
+
+
+def test_get_download_link_default_track_from_public_base_url(client, info_holder, monkeypatch):
+    monkeypatch.setenv("PUBLIC_BASE_URL", "https://dukwoos-mac-mini.tailb8572b.ts.net/")
+    monkeypatch.setenv("RENDER_EXTERNAL_URL", "https://ignored.onrender.com")
+    result = call(client, "get_download_link", url=f"https://www.youtube.com/watch?v={VID}&t=5")
+    assert result["isError"] is False
+    data = result["structuredContent"]
+    assert data["download_url"] == (
+        "https://dukwoos-mac-mini.tailb8572b.ts.net/api/download"
+        f"?url={VID}&lang=en&auto=false&fmt=txt&layout=paragraphs&header=1"
+    )
+    assert data["web_app_url"] == "https://dukwoos-mac-mini.tailb8572b.ts.net/"
+    assert data["filename"] == "Never Gonna Give You Up.en.txt"
+    assert data["track"] == {"lang": "en", "name": "English", "auto": False}
+    assert "no login" in data["note"]
+    assert info_holder["fetched"] == []  # the link tool never downloads the subtitles
+
+
+def test_get_download_link_explicit_choice_encoding_and_filename(client, info_holder, monkeypatch):
+    monkeypatch.setenv("PUBLIC_BASE_URL", "https://host.example")
+    info_holder["info"] = make_info([Track("pt-BR", "Portugu\u00eas (Brasil)", False, "m-pt"),
+                                     Track("en-orig", "English", True, "a-en-orig")])
+    info_holder["info"].title = "Caf\u00e9 & Co: 100% <live>?"
+    data = call(client, "get_download_link", url=VID, lang="pt-BR", fmt="txt", layout="sentences",
+                include_header=False)["structuredContent"]
+    parts, q = link_query(data["download_url"])
+    assert (parts.scheme, parts.netloc, parts.path) == ("https", "host.example", "/api/download")
+    assert q == {"url": VID, "lang": "pt-BR", "auto": "false", "fmt": "txt", "layout": "sentences", "header": "0"}
+    assert data["filename"] == "Caf\u00e9 & Co 100% live.pt-BR.txt"
+
+    data = call(client, "get_download_link", url=VID, lang="en", fmt="srt", layout="cues")["structuredContent"]
+    _, q = link_query(data["download_url"])
+    assert q == {"url": VID, "lang": "en-orig", "auto": "true", "fmt": "srt", "layout": "paragraphs", "header": "1"}
+    assert data["track"] == {"lang": "en-orig", "name": "English", "auto": True}
+    assert data["filename"] == "Caf\u00e9 & Co 100% live.en-orig.auto.srt"
+
+    missing = call(client, "get_download_link", url=VID, lang="ja")
+    assert missing["isError"] is True and "No subtitle track for language 'ja'" in text_of(missing)
+
+
+def test_get_download_link_url_is_served_by_rest_api(client, monkeypatch):
+    monkeypatch.setenv("PUBLIC_BASE_URL", "https://host.example")
+    data = call(client, "get_download_link", url=VID, lang="ko", fmt="vtt")["structuredContent"]
+    parts = urlsplit(data["download_url"])
+    r = client.get(f"{parts.path}?{parts.query}")
+    assert r.status_code == 200 and r.text.startswith("WEBVTT")
+    assert data["filename"].encode("ascii", "ignore").decode() in r.headers["content-disposition"]
+
+
+@pytest.mark.parametrize("args", [{"fmt": "docx"}, {"layout": "words"}, {"url": "not a url"}])
+def test_get_download_link_rejects_bad_arguments(client, args):
+    result = call(client, "get_download_link", **{"url": VID, **args})
+    assert result["isError"] is True
+
+
+def test_get_download_link_base_url_from_request(client, monkeypatch):
+    data = call(client, "get_download_link", url=VID)["structuredContent"]
+    assert data["download_url"].startswith("http://testserver/api/download?url=")
+    assert data["web_app_url"] == "http://testserver/" and "no login" in data["note"]
+
+    r = rpc(client, "tools/call", {"name": "get_download_link", "arguments": {"url": VID}},
+            headers={"X-Forwarded-Proto": "https", "Host": "dukwoos-mac-mini.tailb8572b.ts.net"})
+    assert r.json()["result"]["structuredContent"]["web_app_url"] == "https://dukwoos-mac-mini.tailb8572b.ts.net/"
+
+    monkeypatch.setenv("RENDER_EXTERNAL_URL", "https://yt.onrender.com")
+    data = call(client, "get_download_link", url=VID)["structuredContent"]
+    assert data["web_app_url"] == "https://yt.onrender.com/"
+
+
+def test_get_download_link_relative_without_any_base_url(info_holder):
+    """Outside an HTTP request (stdio, direct call) and without env vars the link is relative."""
+    import anyio
+    from mcp.server.mcpserver import Context
+
+    from app.mcp_server import UNCONFIGURED_NOTE, get_download_link
+
+    data = anyio.run(lambda: get_download_link(VID, Context(), fmt="srt"))
+    assert data["download_url"] == f"/api/download?url={VID}&lang=en&auto=false&fmt=srt&layout=paragraphs&header=1"
+    assert data["web_app_url"] == "/" and data["note"] == UNCONFIGURED_NOTE
+    assert "PUBLIC_BASE_URL" in data["note"] and info_holder["fetched"] == []
+
+
 @pytest.mark.parametrize(
     "tool,args,message",
     [
@@ -227,7 +330,7 @@ def test_api_key_guard(client, monkeypatch):
         {"path": "/mcp?key=s3cret-key"},
     ):
         r = rpc(client, "tools/list", **kwargs)
-        assert r.status_code == 200 and len(r.json()["result"]["tools"]) == 2, kwargs
+        assert r.status_code == 200 and len(r.json()["result"]["tools"]) == 3, kwargs
     # The rest of the site ignores the key.
     assert client.get("/healthz").status_code == 200
     assert client.get("/api/info", params={"url": "not-a-url"}).status_code == 400

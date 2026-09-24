@@ -5,8 +5,6 @@ from __future__ import annotations
 import hmac
 import logging
 import os
-import re
-import unicodedata
 from contextlib import asynccontextmanager
 from pathlib import Path
 from urllib.parse import parse_qs, quote
@@ -22,6 +20,7 @@ from starlette.types import ASGIApp, Receive, Scope, Send
 
 from app import __version__, mcp_server, youtube
 from app.convert import FORMATS, LAYOUTS, convert
+from app.youtube import safe_title  # noqa: F401  (re-exported for tests)
 
 log = logging.getLogger(__name__)
 
@@ -87,15 +86,6 @@ async def _load_info(video_id: str) -> youtube.VideoInfo:
         return await run_in_threadpool(youtube.fetch_info, video_id)
     except youtube.YoutubeError as exc:
         raise HTTPException(502, f"Could not fetch video info: {exc}") from exc
-
-
-def safe_title(title: str, fallback: str) -> str:
-    """Make a title safe for a filename: no reserved chars, collapsed spaces, max 80 chars."""
-    name = "".join(ch for ch in title if unicodedata.category(ch)[0] != "C")
-    name = re.sub(r'[\\/:*?"<>|]+', " ", name)
-    name = re.sub(r"\s+", " ", name).strip(" .")
-    name = name[:80].strip(" .")
-    return name or fallback
 
 
 def content_disposition(filename: str, ascii_fallback: str) -> str:
@@ -177,14 +167,11 @@ async def api_download(
     if not body.strip() or body.strip() == "WEBVTT":
         raise HTTPException(502, "The subtitle track was empty or could not be parsed.")
 
-    title = safe_title(info.title, video_id)
-    lang_part = re.sub(r"[^A-Za-z0-9_-]", "", lang) or "sub"
-    suffix = f".{lang_part}{'.auto' if auto_flag else ''}.{fmt}"
-    ascii_title = title if title.isascii() else video_id
+    filename, ascii_name = youtube.download_filename(info, lang, auto_flag, fmt)
     return Response(
         content=body.encode("utf-8"),
         media_type=MEDIA_TYPES[fmt],
-        headers={"Content-Disposition": content_disposition(title + suffix, ascii_title + suffix)},
+        headers={"Content-Disposition": content_disposition(filename, ascii_name)},
     )
 
 
