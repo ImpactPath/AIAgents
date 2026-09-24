@@ -62,7 +62,10 @@ UNCONFIGURED_NOTE = (
     "The server's public URL is not configured (set PUBLIC_BASE_URL), so this is a path relative to the "
     "server's address; prefix it with the host the user opens the web app on."
 )
-READY_NOTE = "Open the link in a browser to save the file; the web app needs no login."
+READY_NOTE = (
+    "Open the link in any browser on any device to save the file. It is a public HTTPS address: no login, "
+    "no Tailscale or VPN needed. Tell the user exactly that."
+)
 MIME_TYPES = {"txt": "text/plain", "srt": "application/x-subrip", "vtt": "text/vtt"}
 URI_SCHEME = "subtitles://"
 TRACK_URI_PREFIX = URI_SCHEME + "video/"  # constant host: clients may lowercase a URI host, ids are case-sensitive
