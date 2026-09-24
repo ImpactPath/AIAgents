@@ -1,0 +1,1218 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YouTube Subtitle Downloader</title>
+    <meta name="description" content="Download YouTube subtitles as SRT, VTT, or plain text.">
+    <!-- Favicon: same download mark as the header logo, inline so no extra file is needed -->
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2024%2024'%3E%3Crect%20width='24'%20height='24'%20rx='4.8'%20fill='%23dc2626'/%3E%3Cpath%20d='M12%204.5v10M7.5%2010l4.5%204.5%204.5-4.5M6%2019h12'%20fill='none'%20stroke='%23ffffff'%20stroke-width='2.5'%20stroke-linecap='round'%20stroke-linejoin='round'/%3E%3C/svg%3E">
+    <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
+    <meta name="theme-color" content="#09090b" media="(prefers-color-scheme: dark)">
+    <script>
+        // Apply the saved theme before first paint to avoid a flash of the wrong theme.
+        try {
+            var savedTheme = localStorage.getItem('gggi_theme');
+            if (savedTheme === 'dark' || savedTheme === 'light') {
+                document.documentElement.dataset.theme = savedTheme;
+            }
+        } catch (e) { /* storage unavailable: keep the light default */ }
+    </script>
+    <!-- Tailwind CSS (Play CDN) -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        // shadcn/ui style color tokens: each is an HSL triplet defined in the <style> block below.
+        window.tailwind = window.tailwind || {};
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        border: 'hsl(var(--border) / <alpha-value>)',
+                        input: 'hsl(var(--input) / <alpha-value>)',
+                        ring: 'hsl(var(--ring) / <alpha-value>)',
+                        background: 'hsl(var(--background) / <alpha-value>)',
+                        foreground: 'hsl(var(--foreground) / <alpha-value>)',
+                        primary: { DEFAULT: 'hsl(var(--primary) / <alpha-value>)', foreground: 'hsl(var(--primary-foreground) / <alpha-value>)' },
+                        secondary: { DEFAULT: 'hsl(var(--secondary) / <alpha-value>)', foreground: 'hsl(var(--secondary-foreground) / <alpha-value>)' },
+                        destructive: { DEFAULT: 'hsl(var(--destructive) / <alpha-value>)', foreground: 'hsl(var(--destructive-foreground) / <alpha-value>)' },
+                        muted: { DEFAULT: 'hsl(var(--muted) / <alpha-value>)', foreground: 'hsl(var(--muted-foreground) / <alpha-value>)' },
+                        accent: { DEFAULT: 'hsl(var(--accent) / <alpha-value>)', foreground: 'hsl(var(--accent-foreground) / <alpha-value>)' },
+                        card: { DEFAULT: 'hsl(var(--card) / <alpha-value>)', foreground: 'hsl(var(--card-foreground) / <alpha-value>)' },
+                    },
+                    borderRadius: { lg: 'var(--radius)', md: 'calc(var(--radius) - 2px)', sm: 'calc(var(--radius) - 4px)' },
+                    fontFamily: {
+                        sans: ['Geist', 'Inter', 'system-ui', '-apple-system', 'Segoe UI', 'Apple SD Gothic Neo', 'Malgun Gothic', 'sans-serif'],
+                        mono: ['"Geist Mono"', 'ui-monospace', 'SFMono-Regular', 'Menlo', 'Consolas', 'monospace'],
+                    },
+                },
+            },
+        };
+    </script>
+    <!-- Geist and Geist Mono from Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400&display=swap" rel="stylesheet">
+    <style>
+        /* --- Design tokens (shadcn/ui "New York", zinc). Values are HSL triplets: use hsl(var(--x)). --- */
+        :root, :root[data-theme="light"] {
+            --background: 0 0% 100%;
+            --foreground: 240 10% 3.9%;
+            --card: 0 0% 100%;
+            --card-foreground: 240 10% 3.9%;
+            --muted: 240 4.8% 95.9%;
+            --muted-foreground: 240 3.8% 46.1%;
+            --border: 240 5.9% 90%;
+            --input: 240 5.9% 90%;
+            /* Light mode primary is a soft red (#df4b4b) with white text. */
+            --primary: 0 70% 58%;
+            --primary-foreground: 0 0% 100%;
+            --secondary: 240 4.8% 95.9%;
+            --secondary-foreground: 240 5.9% 10%;
+            --accent: 240 4.8% 95.9%;
+            --accent-foreground: 240 5.9% 10%;
+            --destructive: 0 84.2% 60.2%;
+            --destructive-foreground: 0 0% 98%;
+            --ring: 0 75% 60%;
+            --radius: 0.5rem;
+            color-scheme: light;
+        }
+        :root[data-theme="dark"] {
+            --background: 240 10% 3.9%;
+            --foreground: 0 0% 98%;
+            --card: 240 10% 3.9%;
+            --card-foreground: 0 0% 98%;
+            --muted: 240 3.7% 15.9%;
+            --muted-foreground: 240 5% 64.9%;
+            --border: 240 3.7% 15.9%;
+            --input: 240 3.7% 15.9%;
+            --primary: 0 70% 58%;
+            --primary-foreground: 0 0% 100%;
+            --secondary: 240 3.7% 15.9%;
+            --secondary-foreground: 0 0% 98%;
+            --accent: 240 3.7% 15.9%;
+            --accent-foreground: 0 0% 98%;
+            --destructive: 0 62.8% 30.6%;
+            --destructive-foreground: 0 0% 98%;
+            --ring: 0 70% 60%;
+            color-scheme: dark;
+        }
+
+        html { -webkit-text-size-adjust: 100%; }
+        * { border-color: hsl(var(--border)); }
+        body {
+            font-family: Geist, Inter, system-ui, -apple-system, 'Segoe UI', 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif;
+            background-color: hsl(var(--background));
+            color: hsl(var(--foreground));
+            overflow-x: hidden;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+
+        /* --- Focus: ring-1 ring-ring, with a ring-offset-2 for buttons and chips --- */
+        :focus-visible { outline: none; }
+        .focus-ring:focus-visible, .btn:focus-visible, a:focus-visible, pre:focus-visible, .selected-line:focus-visible {
+            outline: none;
+            box-shadow: 0 0 0 2px hsl(var(--background)), 0 0 0 3px hsl(var(--ring));
+        }
+
+        /* --- Input (shadcn Input) --- */
+        .field {
+            display: flex; width: 100%; border-radius: calc(var(--radius) - 2px);
+            border: 1px solid hsl(var(--input)); background-color: hsl(var(--background));
+            color: hsl(var(--foreground)); font-size: 0.875rem;
+            box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+            transition: border-color 0.15s ease, box-shadow 0.15s ease;
+        }
+        .field::placeholder { color: hsl(var(--muted-foreground)); opacity: 1; }
+        .field:focus-visible { outline: none; box-shadow: 0 0 0 1px hsl(var(--ring)); }
+        .field[aria-invalid="true"] { border-color: hsl(var(--destructive)); }
+        .field[aria-invalid="true"]:focus-visible { box-shadow: 0 0 0 1px hsl(var(--destructive)); }
+        .field-error { color: hsl(var(--destructive)); }
+        :root[data-theme="dark"] .field-error { color: hsl(0 72% 65%); }
+
+        /* --- Buttons (shadcn Button variants) --- */
+        .btn {
+            display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem;
+            height: 2.25rem; padding: 0 1rem; border-radius: calc(var(--radius) - 2px);
+            font-size: 0.875rem; font-weight: 500; white-space: nowrap; cursor: pointer;
+            transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+        }
+        .btn:disabled { opacity: 0.5; pointer-events: none; }
+        .btn svg { width: 1rem; height: 1rem; flex: none; }
+        .btn-default { background-color: hsl(var(--primary)); color: hsl(var(--primary-foreground)); box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05); }
+        .btn-default:hover { background-color: hsl(var(--primary) / 0.9); }
+        .btn-outline {
+            border: 1px solid hsl(var(--input)); background-color: hsl(var(--background)); color: hsl(var(--foreground));
+            box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+        }
+        .btn-outline:hover { background-color: hsl(var(--accent)); color: hsl(var(--accent-foreground)); }
+        .btn-ghost { background: transparent; color: hsl(var(--foreground)); }
+        .btn-ghost:hover { background-color: hsl(var(--accent)); color: hsl(var(--accent-foreground)); }
+        .btn-lg { height: 2.5rem; }
+        .btn-sm { height: 2rem; padding: 0 0.75rem; font-size: 0.75rem; }
+        .btn-icon { height: 2rem; width: 2rem; padding: 0; }
+        .input-copy { color: hsl(var(--muted-foreground)); }
+        .input-copy:hover { color: hsl(var(--accent-foreground)); }
+
+        /* --- Tabs (used for EN/KO, Format and Text layout). Radio or aria-pressed driven. --- */
+        .tabs { display: inline-flex; align-items: center; gap: 0.125rem; padding: 0.25rem; border-radius: calc(var(--radius) - 2px); background-color: hsl(var(--muted)); color: hsl(var(--muted-foreground)); }
+        .tab, .seg-label {
+            display: inline-flex; align-items: center; justify-content: center; white-space: nowrap;
+            border-radius: calc(var(--radius) - 4px); font-weight: 500; cursor: pointer;
+            color: hsl(var(--muted-foreground)); transition: color 0.15s ease, background-color 0.15s ease, box-shadow 0.15s ease;
+        }
+        .tab:hover, .seg-label:hover { color: hsl(var(--foreground)); }
+        .tab[aria-pressed="true"], .seg-input:checked + .seg-label {
+            background-color: hsl(var(--background)); color: hsl(var(--foreground));
+            box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+        }
+        .tab:focus-visible, .seg-input:focus-visible + .seg-label { outline: none; box-shadow: 0 0 0 2px hsl(var(--background)), 0 0 0 3px hsl(var(--ring)); }
+        .seg-label { height: 1.75rem; padding: 0 0.75rem; font-size: 0.875rem; width: 100%; }
+        .seg-label.seg-label-text { padding: 0 0.625rem; font-size: 0.8125rem; }
+
+        /* --- Track chips: shadcn Toggle look over a visually hidden radio --- */
+        .chip { position: relative; min-width: 0; }
+        .chip-label {
+            display: inline-flex; align-items: center; gap: 0.375rem; max-width: 100%;
+            height: 2rem; padding: 0 0.75rem; border-radius: calc(var(--radius) - 2px);
+            border: 1px solid hsl(var(--input)); background-color: hsl(var(--background));
+            color: hsl(var(--foreground)); font-size: 0.875rem; font-weight: 500;
+            cursor: pointer; user-select: none;
+            box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+            transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+        }
+        .chip-label:hover { background-color: hsl(var(--accent)); color: hsl(var(--accent-foreground)); }
+        .chip-input:checked + .chip-label {
+            background-color: hsl(var(--primary)); color: hsl(var(--primary-foreground)); border-color: hsl(var(--primary));
+        }
+        .chip-input:focus-visible + .chip-label { box-shadow: 0 0 0 2px hsl(var(--background)), 0 0 0 3px hsl(var(--ring)); }
+        .chip-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .chip-code {
+            flex: none; font-family: 'Geist Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+            font-size: 11px; font-weight: 400; color: hsl(var(--muted-foreground));
+        }
+        .chip-kind { flex: none; font-size: 0.75rem; font-weight: 400; color: hsl(var(--muted-foreground)); }
+        .chip-kind::before { content: '\00B7'; margin-right: 0.375rem; }
+        .chip-input:checked + .chip-label .chip-code,
+        .chip-input:checked + .chip-label .chip-kind { color: hsl(var(--primary-foreground) / 0.85); }
+
+        /* --- Badges --- */
+        .badge {
+            display: inline-flex; align-items: center; gap: 0.25rem; border-radius: calc(var(--radius) - 2px);
+            padding: 0.125rem 0.5rem; font-size: 0.75rem; font-weight: 500; line-height: 1rem;
+        }
+        .badge-secondary { border: 1px solid transparent; background-color: hsl(var(--secondary)); color: hsl(var(--secondary-foreground)); }
+        .badge-outline { border: 1px solid hsl(var(--border)); color: hsl(var(--foreground)); }
+
+        /* --- Selected-track line: "Selected:" label plus an outline badge; click scrolls to the chip --- */
+        .selected-line { max-width: 100%; border-radius: calc(var(--radius) - 2px); cursor: pointer; text-align: left; line-height: 1.5rem; }
+        .selected-line .sel-label { color: hsl(var(--muted-foreground)); font-size: 0.75rem; }
+        .selected-line .sel-badge { display: inline-block; max-width: 100%; vertical-align: middle; transition: background-color 0.15s ease; overflow-wrap: anywhere; }
+        .selected-line:hover .sel-badge { background-color: hsl(var(--accent)); }
+
+        /* --- Alert (destructive) --- */
+        .alert { border: 1px solid hsl(var(--destructive) / 0.5); color: hsl(var(--destructive)); background-color: hsl(var(--background)); }
+        :root[data-theme="dark"] .alert { border-color: hsl(0 62.8% 45% / 0.8); color: hsl(0 72% 72%); }
+        .alert-close { color: inherit; opacity: 0.7; }
+        .alert-close:hover { opacity: 1; background-color: hsl(var(--accent)); }
+
+        /* --- Skeleton, thumbnail, preview --- */
+        .skeleton { border-radius: calc(var(--radius) - 2px); background-color: hsl(var(--muted)); animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
+        @keyframes pulse { 50% { opacity: 0.5; } }
+        .thumb { background-color: hsl(var(--muted)); }
+        .pre-box {
+            background-color: hsl(var(--muted) / 0.5); color: hsl(var(--foreground));
+            font-family: 'Geist Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace;
+            white-space: pre-wrap; overflow-wrap: anywhere; tab-size: 4;
+        }
+
+        /* --- Small spinner inside the Preview and Download buttons --- */
+        .spinner {
+            width: 1rem; height: 1rem; flex: none; border-radius: 9999px;
+            border: 2px solid currentColor; border-right-color: transparent; opacity: 0.8;
+            animation: spin 0.7s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* Result card entrance (JS toggles .fade-in) */
+        .fade-in { animation: fade-in 0.2s ease-out both; }
+        @keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
+
+        /* Theme toggle icons */
+        #theme-toggle .icon { position: absolute; transition: opacity 0.2s ease, transform 0.2s ease; }
+        #moon-icon { opacity: 0; transform: scale(0.5) rotate(-90deg); }
+        #sun-icon { opacity: 1; transform: scale(1) rotate(0deg); }
+        :root[data-theme="light"] #moon-icon { opacity: 1; transform: scale(1) rotate(0deg); }
+        :root[data-theme="light"] #sun-icon { opacity: 0; transform: scale(0.5) rotate(90deg); }
+
+        /* Thumbnail and title link to the video on YouTube */
+        .thumb-link { cursor: pointer; transition: box-shadow 0.15s ease; }
+        .thumb-link:hover, .thumb-link:focus-visible { outline: none; box-shadow: 0 0 0 1px hsl(var(--ring)); }
+        .thumb-link .thumb-ext { opacity: 0.85; transition: opacity 0.15s ease; }
+        .thumb-link:hover .thumb-ext, .thumb-link:focus-visible .thumb-ext { opacity: 1; }
+        .title-link { color: inherit; text-underline-offset: 4px; border-radius: 2px; }
+        .title-link:hover { text-decoration: underline; }
+        .title-link:focus-visible { outline: none; box-shadow: 0 0 0 2px hsl(var(--background)), 0 0 0 3px hsl(var(--ring)); }
+
+        .link { color: hsl(var(--foreground)); text-underline-offset: 4px; font-weight: 500; }
+        .link:hover { text-decoration: underline; }
+
+        [hidden] { display: none !important; }
+
+        @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after { transition-duration: 0.01ms !important; }
+            .fade-in, .skeleton { animation: none; }
+            .spinner { animation-duration: 1.6s; }
+        }
+    </style>
+</head>
+<body class="min-h-screen bg-background text-foreground antialiased flex flex-col">
+
+    <!-- Header bar -->
+    <header class="h-14 border-b border-border">
+        <div class="max-w-[57.6rem] mx-auto h-full px-4 flex items-center justify-between gap-3">
+            <div class="flex items-center gap-2 min-w-0">
+                <!-- Logo mark: same drawing as the favicon (red rounded square, white download glyph) -->
+                <svg class="flex-none w-5 h-5" viewBox="0 0 24 24" aria-hidden="true"><rect width="24" height="24" rx="4.8" fill="#dc2626"></rect><path d="M12 4.5v10M7.5 10l4.5 4.5 4.5-4.5M6 19h12" fill="none" stroke="#ffffff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+                <h1 class="text-sm font-semibold truncate" data-i18n="title">YouTube Subtitle Downloader</h1>
+            </div>
+            <div class="flex items-center gap-1.5 flex-none">
+                <div class="tabs" role="group" data-i18n-aria-label="langGroup" aria-label="Language">
+                    <button type="button" class="lang-btn tab h-7 px-2.5 text-xs" data-lang="en" aria-pressed="true" lang="en">EN</button>
+                    <button type="button" class="lang-btn tab h-7 px-2.5 text-xs" data-lang="ko" aria-pressed="false" lang="ko">KO</button>
+                </div>
+                <button id="theme-toggle" type="button" data-i18n-aria-label="themeToggle" aria-label="Toggle color theme" class="btn btn-ghost btn-icon relative">
+                    <svg id="moon-icon" class="icon" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"></path></svg>
+                    <svg id="sun-icon" class="icon" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true"><circle cx="12" cy="12" r="4" stroke-width="2"></circle><path stroke-linecap="round" stroke-width="2" d="M12 2v2m0 16v2M4.93 4.93l1.41 1.41m11.32 11.32 1.41 1.41M2 12h2m16 0h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"></path></svg>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="flex-1 w-full max-w-[57.6rem] mx-auto px-4 pt-10 sm:pt-14">
+
+        <div>
+            <!-- URL form (Card) -->
+            <form id="fetch-form" novalidate>
+                <label for="url-input" class="block text-sm font-medium leading-none mb-2.5" data-i18n="urlLabel">YouTube URL or video ID</label>
+                <div class="flex flex-col sm:flex-row gap-2">
+                    <div class="relative sm:flex-1 min-w-0">
+                        <input id="url-input" name="url" type="text" inputmode="url" autocomplete="off" autocapitalize="off" spellcheck="false"
+                            class="field h-10 pl-3 pr-20 min-w-0"
+                            placeholder="https://www.youtube.com/watch?v=..."
+                            aria-describedby="url-error">
+                        <!-- Paste and copy buttons inside the input (type="button" so Enter still submits the form) -->
+                        <div class="absolute right-1 top-1 flex items-center gap-0.5">
+                        <button id="url-paste-btn" type="button" class="btn btn-ghost btn-icon input-copy" data-i18n-aria-label="pasteLink" aria-label="Paste link" data-i18n-title="pasteLink" title="Paste link">
+                            <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true"><rect x="8" y="2" width="8" height="4" rx="1" stroke-width="2"></rect><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 4H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2M16 4h2a2 2 0 0 1 2 2v2M11 14h10m-4-4 4 4-4 4"></path></svg>
+                        </button>
+                        <button id="url-copy-btn" type="button" class="btn btn-ghost btn-icon input-copy" data-i18n-aria-label="copyLink" aria-label="Copy link" data-i18n-title="copyLink" title="Copy link" disabled>
+                            <svg id="url-copy-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true"><rect x="9" y="9" width="12" height="12" rx="2" stroke-width="2"></rect><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                            <svg id="url-copied-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true" style="display:none"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 6 9 17l-5-5"></path></svg>
+                        </button>
+                        </div>
+                    </div>
+                    <button id="fetch-btn" type="submit" class="btn btn-default btn-lg px-4">
+                        <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true"><circle cx="11" cy="11" r="7" stroke-width="2"></circle><path stroke-linecap="round" stroke-width="2" d="m20 20-3.5-3.5"></path></svg>
+                        <span data-i18n="fetchBtn">Fetch subtitles</span>
+                    </button>
+                </div>
+                <p id="url-error" class="field-error text-sm font-medium mt-2" hidden></p>
+                <p id="url-paste-hint" class="text-xs text-muted-foreground mt-2" hidden></p>
+            </form>
+
+            <!-- Loading status (announced). The skeleton reuses the #status-spinner id that setLoading() toggles. -->
+            <div id="status" role="status" aria-live="polite">
+                <p id="status-text" class="mt-10 text-sm text-muted-foreground empty:hidden"></p>
+                <div id="status-spinner" class="mt-4" aria-hidden="true" hidden>
+                    <div class="flex flex-col sm:flex-row gap-4 sm:gap-6">
+                        <div class="skeleton w-full sm:w-56 aspect-video flex-none rounded-lg"></div>
+                        <div class="flex-1 space-y-3 pt-1">
+                            <div class="skeleton h-5 w-4/5"></div>
+                            <div class="skeleton h-4 w-2/5"></div>
+                            <div class="flex gap-2 pt-1"><div class="skeleton h-5 w-14"></div><div class="skeleton h-5 w-20"></div></div>
+                        </div>
+                    </div>
+                    <div class="mt-10 flex flex-wrap gap-2">
+                        <div class="skeleton h-8 w-28"></div><div class="skeleton h-8 w-24"></div><div class="skeleton h-8 w-32"></div><div class="skeleton h-8 w-20"></div>
+                    </div>
+                </div>
+            </div>
+            <!-- Screen reader only announcements -->
+            <div id="sr-status" class="sr-only" aria-live="polite"></div>
+
+            <!-- Error alert (destructive) -->
+            <div id="alert" class="alert mt-10 rounded-lg p-4 text-sm flex items-start gap-3" role="alert" hidden>
+                <svg class="w-4 h-4 flex-none mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true"><circle cx="12" cy="12" r="10" stroke-width="2"></circle><path stroke-linecap="round" stroke-width="2" d="M12 8v4m0 4h.01"></path></svg>
+                <p id="alert-text" class="flex-1 min-w-0 font-medium leading-5 break-words"></p>
+                <button id="alert-close" type="button" class="alert-close btn btn-ghost btn-icon flex-none -m-1.5 w-7 h-7" data-i18n-aria-label="dismiss" aria-label="Dismiss">
+                    <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 6 6 18M6 6l12 12"></path></svg>
+                </button>
+            </div>
+
+            <!-- Result card -->
+            <section id="result" class="mt-10" aria-labelledby="video-title" hidden>
+                <div class="flex flex-col sm:flex-row gap-4 sm:gap-6">
+                    <a id="video-link" class="thumb-link group relative block w-full sm:w-56 flex-none rounded-lg" href="#" target="_blank" rel="noopener noreferrer" data-i18n-aria-label="openVideo" aria-label="Open video on YouTube">
+                    <div class="thumb relative w-full aspect-video rounded-lg border border-border overflow-hidden">
+                        <img id="thumb-img" class="absolute inset-0 w-full h-full object-cover" alt="" referrerpolicy="no-referrer" hidden>
+                        <div id="thumb-fallback" class="absolute inset-0 flex items-center justify-center text-muted-foreground" aria-hidden="true">
+                            <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect x="2" y="4" width="20" height="16" rx="3" stroke-width="1.5"></rect><path stroke-linejoin="round" stroke-width="1.5" d="m10 9 5 3-5 3V9Z"></path></svg>
+                        </div>
+                    </div>
+                    <!-- External-link affordance in the corner -->
+                    <span class="thumb-ext absolute top-2 right-2 w-6 h-6 rounded-md border border-border bg-background text-foreground flex items-center justify-center shadow-sm" aria-hidden="true">
+                        <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 3h6v6M10 14 21 3M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path></svg>
+                    </span>
+                    </a>
+                    <div class="min-w-0 flex-1">
+                        <h2 id="video-title" class="text-lg font-semibold leading-snug tracking-tight break-words"><a id="video-title-link" class="title-link" href="#" target="_blank" rel="noopener noreferrer"></a></h2>
+                        <p id="video-channel" class="text-sm text-muted-foreground mt-1 break-words"></p>
+                        <div class="flex flex-wrap items-center gap-2 mt-3">
+                            <span id="video-duration" class="badge badge-secondary">
+                                <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true"><circle cx="12" cy="12" r="9" stroke-width="2"></circle><path stroke-linecap="round" stroke-width="2" d="M12 7v5l3 2"></path></svg>
+                                <span id="video-duration-text"></span>
+                            </span>
+                            <span id="video-date" class="badge badge-secondary" hidden>
+                                <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2" stroke-width="2"></rect><path stroke-linecap="round" stroke-width="2" d="M16 2v4M8 2v4M3 10h18"></path></svg>
+                                <span id="video-date-text"></span>
+                            </span>
+                            <span id="track-count" class="badge badge-secondary"></span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Action toolbar: format, text layout, preview and download (kept above the long track lists) -->
+                <div class="mt-10 flex flex-col sm:flex-row sm:items-end gap-4 sm:justify-between">
+                    <div class="flex flex-col gap-4 min-w-0">
+                        <fieldset>
+                            <legend class="text-sm font-medium mb-2" data-i18n="formatLabel">Format</legend>
+                            <div class="tabs h-9 w-full sm:w-auto">
+                                <div class="relative flex-1 sm:flex-none"><input class="seg-input sr-only" type="radio" name="fmt" id="fmt-txt" value="txt" checked><label class="seg-label" for="fmt-txt">TXT</label></div>
+                                <div class="relative flex-1 sm:flex-none"><input class="seg-input sr-only" type="radio" name="fmt" id="fmt-srt" value="srt"><label class="seg-label" for="fmt-srt">SRT</label></div>
+                                <div class="relative flex-1 sm:flex-none"><input class="seg-input sr-only" type="radio" name="fmt" id="fmt-vtt" value="vtt"><label class="seg-label" for="fmt-vtt">VTT</label></div>
+                            </div>
+                        </fieldset>
+                        <!-- Text layout: only shown when TXT is the selected format -->
+                        <fieldset id="layout-group">
+                            <legend class="text-sm font-medium mb-2" data-i18n="layoutLabel">Text layout</legend>
+                            <div class="tabs h-8 w-full sm:w-auto">
+                                <div class="relative flex-1 sm:flex-none"><input class="seg-input sr-only" type="radio" name="layout" id="layout-paragraphs" value="paragraphs" checked><label class="seg-label seg-label-text h-6" for="layout-paragraphs" data-i18n="layoutParagraphs">Paragraphs</label></div>
+                                <div class="relative flex-1 sm:flex-none"><input class="seg-input sr-only" type="radio" name="layout" id="layout-sentences" value="sentences"><label class="seg-label seg-label-text h-6" for="layout-sentences" data-i18n="layoutSentences">Sentences</label></div>
+                                <div class="relative flex-1 sm:flex-none"><input class="seg-input sr-only" type="radio" name="layout" id="layout-cues" value="cues"><label class="seg-label seg-label-text h-6" for="layout-cues" data-i18n="layoutCues">Original cues</label></div>
+                            </div>
+                        </fieldset>
+                    </div>
+                    <div class="grid grid-cols-2 sm:flex gap-2">
+                        <button id="preview-btn" type="button" class="btn btn-outline">
+                            <span id="preview-spinner" class="spinner" hidden></span>
+                            <svg id="preview-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.06 12.35a1 1 0 0 1 0-.7 10.75 10.75 0 0 1 19.88 0 1 1 0 0 1 0 .7 10.75 10.75 0 0 1-19.88 0"></path><circle cx="12" cy="12" r="3" stroke-width="2"></circle></svg>
+                            <span data-i18n="previewBtn">Preview</span>
+                        </button>
+                        <button id="download-btn" type="button" class="btn btn-default">
+                            <span id="download-spinner" class="spinner" hidden></span>
+                            <svg id="download-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15V3m0 12-4-4m4 4 4-4M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path></svg>
+                            <span data-i18n="downloadBtn">Download</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Currently selected track; click to scroll to its chip -->
+                <div id="selected-wrap" class="mt-4 min-w-0" hidden>
+                    <button id="selected-line" type="button" class="selected-line" data-i18n-title="selectedJump" title="Show the selected track in the list"></button>
+                </div>
+
+                <!-- Preview panel -->
+                <div id="preview-panel" class="mt-4" hidden>
+                    <div class="flex items-center justify-between gap-3 mb-2">
+                        <p id="preview-count" class="text-xs text-muted-foreground min-w-0"></p>
+                        <button id="copy-btn" type="button" class="btn btn-outline btn-sm flex-none" data-i18n-title="copyTitle" title="Copies the full subtitle text">
+                            <svg class="!w-3.5 !h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true"><rect x="9" y="9" width="12" height="12" rx="2" stroke-width="2"></rect><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                            <span id="copy-label" data-i18n="copy">Copy</span>
+                        </button>
+                    </div>
+                    <pre id="preview-text" class="pre-box rounded-md border border-border p-4 text-xs leading-relaxed max-h-[46rem] overflow-auto" tabindex="0" data-i18n-aria-label="previewLabel" aria-label="Subtitle preview"></pre>
+                </div>
+
+                <!-- Tracks: every uploader ("original") track plus one original-language auto track.
+                     Machine-translated auto tracks are hidden (YouTube rate-limits them with HTTP 429).
+                     The legend floats so the count can sit on the right of the same row. -->
+                <fieldset id="track-group" class="mt-10">
+                    <legend class="float-left text-sm font-medium" data-i18n="tracksGroup">Subtitles</legend>
+                    <span id="track-group-count" class="float-right text-xs text-muted-foreground leading-5"></span>
+                    <div id="track-chips" class="clear-both pt-3 flex flex-wrap gap-2"></div>
+                    <p id="tracks-empty" class="clear-both pt-3 text-sm text-muted-foreground" data-i18n="noOriginalTracks" hidden>No original-language subtitles available for this video.</p>
+                </fieldset>
+            </section>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="border-t border-border mt-16">
+        <div class="max-w-[57.6rem] mx-auto px-4 py-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 text-xs text-muted-foreground leading-relaxed">
+            <p data-i18n="footerNote">Runs on your own server. Subtitles are fetched via yt-dlp; nothing is stored.</p>
+            <a class="link flex-none" href="https://github.com/ImpactPath/AIAgents/tree/main/youtube-subtitles" target="_blank" rel="noopener noreferrer" data-i18n="footerLink">Source on GitHub</a>
+        </div>
+    </footer>
+
+    <!-- Hidden link used to trigger downloads -->
+    <a id="download-link" href="#" download hidden aria-hidden="true" tabindex="-1"></a>
+
+    <script>
+    (() => {
+        'use strict';
+
+        // Same origin by default. Set window.SUBTITLE_API_BASE before this script to point elsewhere.
+        const API_BASE = (window.SUBTITLE_API_BASE || '').replace(/\/+$/, '');
+        const PREVIEW_LIMIT = 2000000; // show the whole transcript; Copy and Download always use the full text
+        // Manual (uploader) tracks in these languages are listed right after the original-language manual
+        // track, in this order. Match is on the primary subtag ('ko' also matches 'ko-KR'). Add codes to pin more.
+        const PINNED_LANGS = ['ko'];
+
+        const TXT_LAYOUTS = ['paragraphs', 'sentences', 'cues'];
+        const LAYOUT_KEY = 'yts_txt_layout';
+
+        // ---------------- i18n ----------------
+        const I18N = {
+            en: {
+                pageTitle: 'YouTube Subtitle Downloader',
+                title: 'YouTube Subtitle Downloader',
+                urlLabel: 'YouTube URL or video ID',
+                fetchBtn: 'Fetch subtitles',
+                loading: 'Looking up subtitles...',
+                emptyUrl: 'Enter a YouTube URL or video ID first.',
+                invalidUrl: 'That does not look like a YouTube video link. Use a youtube.com or youtu.be URL, or an 11-character video ID.',
+                networkError: 'Could not reach the server. Check your connection and try again.',
+                httpError: 'Something went wrong (HTTP {status}). Please try again.',
+                dismiss: 'Dismiss',
+                themeToggle: 'Toggle color theme',
+                langGroup: 'Language',
+                unknownChannel: 'Unknown channel',
+                trackCount: '{n} tracks',
+                trackCountOne: '1 track',
+                kindManual: 'original',
+                kindAuto: 'auto',
+                tracksGroup: 'Subtitles',
+                noOriginalTracks: 'No original-language subtitles available for this video.',
+                selectedTrack: 'Selected: {name} · {kind} · {lang}',
+                selectedJump: 'Show the selected track in the list',
+                openVideo: 'Open video on YouTube',
+                formatLabel: 'Format',
+                layoutLabel: 'Text layout',
+                layoutParagraphs: 'Paragraphs',
+                layoutSentences: 'Sentences',
+                layoutCues: 'Original cues',
+                previewBtn: 'Preview',
+                downloadBtn: 'Download',
+                previewLabel: 'Subtitle preview',
+                previewAll: '{total} characters',
+                previewPart: 'Showing the first {shown} of {total} characters',
+                previewEmpty: 'This track is empty.',
+                copy: 'Copy',
+                copied: 'Copied',
+                copyFailed: 'Copy failed',
+                copyTitle: 'Copies the full subtitle text',
+                copyLink: 'Copy link',
+                linkCopied: 'Link copied',
+                pasteLink: 'Paste link',
+                linkPasted: 'Link pasted',
+                pasteHint: 'Press Cmd+V or Ctrl+V to paste',
+                foundTracks: 'Found {n} subtitle tracks.',
+                previewReady: 'Preview loaded.',
+                downloadStarted: 'Download started.',
+                footerNote: 'Runs on your own server. Subtitles are fetched via yt-dlp; nothing is stored.',
+                footerLink: 'Source on GitHub',
+            },
+            ko: {
+                pageTitle: '유튜브 자막 다운로더',
+                title: '유튜브 자막 다운로더',
+                urlLabel: '유튜브 URL 또는 동영상 ID',
+                fetchBtn: '자막 불러오기',
+                loading: '자막을 찾는 중...',
+                emptyUrl: '유튜브 URL이나 동영상 ID를 먼저 입력해 주세요.',
+                invalidUrl: '유튜브 동영상 링크가 아닌 것 같습니다. youtube.com 또는 youtu.be 주소나 11자리 동영상 ID를 입력해 주세요.',
+                networkError: '서버에 연결할 수 없습니다. 네트워크 상태를 확인한 뒤 다시 시도해 주세요.',
+                httpError: '문제가 발생했습니다 (HTTP {status}). 잠시 후 다시 시도해 주세요.',
+                dismiss: '닫기',
+                themeToggle: '화면 테마 전환',
+                langGroup: '언어',
+                unknownChannel: '채널 정보 없음',
+                trackCount: '자막 {n}개',
+                trackCountOne: '자막 1개',
+                kindManual: '원본',
+                kindAuto: '자동',
+                tracksGroup: '자막',
+                noOriginalTracks: '이 영상에는 원어 자막이 없습니다.',
+                selectedTrack: '선택됨: {name} · {kind} · {lang}',
+                selectedJump: '목록에서 선택한 자막 보기',
+                openVideo: '유튜브에서 영상 열기',
+                formatLabel: '파일 형식',
+                layoutLabel: '텍스트 줄 정돈',
+                layoutParagraphs: '문단',
+                layoutSentences: '한 문장씩',
+                layoutCues: '원본 줄',
+                previewBtn: '미리 보기',
+                downloadBtn: '다운로드',
+                previewLabel: '자막 미리 보기',
+                previewAll: '총 {total}자',
+                previewPart: '전체 {total}자 중 앞부분 {shown}자 표시',
+                previewEmpty: '이 자막에는 내용이 없습니다.',
+                copy: '복사',
+                copied: '복사됨',
+                copyFailed: '복사 실패',
+                copyTitle: '자막 전체를 복사합니다',
+                copyLink: '링크 복사',
+                linkCopied: '링크를 복사했습니다',
+                pasteLink: '링크 붙여넣기',
+                linkPasted: '링크를 붙여넣었습니다',
+                pasteHint: 'Cmd+V 또는 Ctrl+V로 붙여넣으세요',
+                foundTracks: '자막 트랙 {n}개를 찾았습니다.',
+                previewReady: '미리 보기를 불러왔습니다.',
+                downloadStarted: '다운로드를 시작했습니다.',
+                footerNote: '직접 운영하는 서버에서 실행됩니다. 자막은 yt-dlp로 가져오며 아무것도 저장하지 않습니다.',
+                footerLink: 'GitHub에서 소스 보기',
+            },
+        };
+
+        const state = {
+            lang: 'en',
+            url: '',          // the input text that produced the current result
+            info: null,
+            selected: -1,     // index into info.tracks
+            fmt: 'txt',
+            layout: 'paragraphs', // TXT layout, sent only when fmt is txt
+            previewText: '',
+            previewShown: 0,
+            infoCtrl: null,
+            previewCtrl: null,
+            urlErrorKey: null,
+            loading: false,
+        };
+
+        const $ = (id) => document.getElementById(id);
+        const els = {
+            html: document.documentElement,
+            form: $('fetch-form'), input: $('url-input'), fetchBtn: $('fetch-btn'), urlError: $('url-error'),
+            statusSpinner: $('status-spinner'), statusText: $('status-text'), sr: $('sr-status'),
+            alert: $('alert'), alertText: $('alert-text'), alertClose: $('alert-close'),
+            result: $('result'), thumbImg: $('thumb-img'), thumbFallback: $('thumb-fallback'),
+            title: $('video-title-link'), channel: $('video-channel'), videoLink: $('video-link'),
+            date: $('video-date'), dateText: $('video-date-text'),
+            duration: $('video-duration'), durationText: $('video-duration-text'), trackCount: $('track-count'),
+            trackChips: $('track-chips'), trackGroupCount: $('track-group-count'), tracksEmpty: $('tracks-empty'),
+            previewBtn: $('preview-btn'), previewSpinner: $('preview-spinner'), previewIcon: $('preview-icon'),
+            layoutGroup: $('layout-group'),
+            selectedWrap: $('selected-wrap'), selectedLine: $('selected-line'),
+            downloadBtn: $('download-btn'), downloadLink: $('download-link'),
+            downloadSpinner: $('download-spinner'), downloadIcon: $('download-icon'),
+            previewPanel: $('preview-panel'), previewCount: $('preview-count'), previewPre: $('preview-text'),
+            copyBtn: $('copy-btn'), copyLabel: $('copy-label'),
+            themeToggle: $('theme-toggle'), langBtns: document.querySelectorAll('.lang-btn'),
+        };
+
+        function t(key, vars) {
+            const dict = I18N[state.lang] || I18N.en;
+            let s = dict[key] != null ? dict[key] : (I18N.en[key] != null ? I18N.en[key] : key);
+            if (vars) s = s.replace(/\{(\w+)\}/g, (m, k) => (vars[k] != null ? vars[k] : m));
+            return s;
+        }
+        const fmtNum = (n) => Number(n).toLocaleString(state.lang === 'ko' ? 'ko-KR' : 'en-US');
+
+        function storageGet(key) { try { return localStorage.getItem(key); } catch (e) { return null; } }
+        function storageSet(key, val) { try { localStorage.setItem(key, val); } catch (e) { /* ignore */ } }
+
+        // ---------------- Theme ----------------
+        function setTheme(theme) {
+            els.html.dataset.theme = theme;
+            storageSet('gggi_theme', theme);
+        }
+        els.themeToggle.addEventListener('click', () => {
+            setTheme(els.html.dataset.theme === 'dark' ? 'light' : 'dark');
+        });
+
+        // ---------------- Language ----------------
+        function applyLang(lang) {
+            state.lang = I18N[lang] ? lang : 'en';
+            els.html.lang = state.lang;
+            document.title = t('pageTitle');
+            document.querySelectorAll('[data-i18n]').forEach((el) => { el.textContent = t(el.dataset.i18n); });
+            document.querySelectorAll('[data-i18n-placeholder]').forEach((el) => { el.placeholder = t(el.dataset.i18nPlaceholder); });
+            document.querySelectorAll('[data-i18n-aria-label]').forEach((el) => { el.setAttribute('aria-label', t(el.dataset.i18nAriaLabel)); });
+            document.querySelectorAll('[data-i18n-title]').forEach((el) => { el.title = t(el.dataset.i18nTitle); });
+            els.langBtns.forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.lang === state.lang)));
+            // Refresh dynamic text that depends on the language.
+            if (state.urlErrorKey) els.urlError.textContent = t(state.urlErrorKey);
+            if (state.loading) els.statusText.textContent = t('loading');
+            if (state.info) renderMeta();
+            renderSelectedLine();
+            if (!els.previewPanel.hidden) renderPreviewCount();
+        }
+        els.langBtns.forEach((b) => b.addEventListener('click', () => {
+            applyLang(b.dataset.lang);
+            storageSet('yts_lang', state.lang);
+        }));
+
+        // ---------------- Helpers ----------------
+        const ID_RE = /^[A-Za-z0-9_-]{11}$/;
+        const YT_HOSTS = ['youtube.com', 'm.youtube.com', 'music.youtube.com'];
+
+        // Client-side sanity check only; the server does the authoritative parsing.
+        function looksLikeYouTube(raw) {
+            const s = raw.trim();
+            if (ID_RE.test(s)) return true;
+            let u;
+            try { u = new URL(/^[a-z][a-z0-9+.-]*:\/\//i.test(s) ? s : 'https://' + s); } catch (e) { return false; }
+            if (!/^https?:$/.test(u.protocol)) return false;
+            const host = u.hostname.toLowerCase().replace(/^www\./, '');
+            const firstSeg = (p) => (p.split('/')[1] || '');
+            if (host === 'youtu.be') return ID_RE.test(firstSeg(u.pathname).slice(0, 11));
+            if (!YT_HOSTS.includes(host)) return false;
+            if (u.pathname.replace(/\/+$/, '') === '/watch') return ID_RE.test((u.searchParams.get('v') || '').slice(0, 11));
+            const m = u.pathname.match(/^\/(shorts|live|embed)\/([^/?#]+)/);
+            return !!(m && ID_RE.test(m[2].slice(0, 11)));
+        }
+
+        function formatDuration(sec) {
+            if (sec == null || !isFinite(sec) || sec < 0) return '';
+            sec = Math.round(sec);
+            const h = Math.floor(sec / 3600);
+            const m = Math.floor((sec % 3600) / 60);
+            const s = sec % 60;
+            const pad = (n) => String(n).padStart(2, '0');
+            return h > 0 ? `${h}:${pad(m)}:${pad(s)}` : `${pad(m)}:${pad(s)}`;
+        }
+
+        class ApiError extends Error {}
+
+        async function errorFromResponse(res) {
+            let detail = null;
+            try {
+                const data = await res.json();
+                if (typeof data.detail === 'string') detail = data.detail;
+                else if (Array.isArray(data.detail)) detail = data.detail.map((d) => d && d.msg).filter(Boolean).join('; ');
+            } catch (e) { /* not JSON */ }
+            return new ApiError(detail || t('httpError', { status: res.status }));
+        }
+
+        async function apiFetch(url, signal) {
+            let res;
+            try {
+                res = await fetch(url, { signal });
+            } catch (err) {
+                if (err && err.name === 'AbortError') throw err;
+                throw new ApiError(t('networkError'));
+            }
+            if (!res.ok) throw await errorFromResponse(res);
+            return res;
+        }
+
+        function announce(msg) {
+            els.sr.textContent = '';
+            // Re-set on the next frame so repeated identical messages are still announced.
+            requestAnimationFrame(() => { els.sr.textContent = msg; });
+        }
+
+        // ---------------- URL validation ----------------
+        function showUrlError(key) {
+            state.urlErrorKey = key;
+            els.urlError.textContent = t(key);
+            els.urlError.hidden = false;
+            els.input.setAttribute('aria-invalid', 'true');
+        }
+        function clearUrlError() {
+            state.urlErrorKey = null;
+            els.urlError.hidden = true;
+            els.urlError.textContent = '';
+            els.input.removeAttribute('aria-invalid');
+        }
+
+        // ---------------- Alert + loading ----------------
+        function showAlert(msg) {
+            els.alertText.textContent = msg;
+            els.alert.hidden = false;
+        }
+        function hideAlert() { els.alert.hidden = true; els.alertText.textContent = ''; }
+        els.alertClose.addEventListener('click', () => { hideAlert(); els.input.focus(); });
+
+        function setLoading(on) {
+            state.loading = on;
+            els.statusSpinner.hidden = !on;
+            els.statusText.textContent = on ? t('loading') : '';
+            els.fetchBtn.disabled = on;
+            els.form.setAttribute('aria-busy', String(on));
+        }
+
+        // ---------------- Fetch info ----------------
+        async function fetchInfo() {
+            const raw = els.input.value.trim();
+            if (!raw) { showUrlError('emptyUrl'); els.input.focus(); return; }
+            if (!looksLikeYouTube(raw)) { showUrlError('invalidUrl'); els.input.focus(); return; }
+            clearUrlError();
+            hideAlert();
+            cancelPreview();
+            els.result.hidden = true;
+            state.info = null;
+
+            if (state.infoCtrl) state.infoCtrl.abort();
+            const ctrl = new AbortController();
+            state.infoCtrl = ctrl;
+            setLoading(true);
+            try {
+                const res = await apiFetch(`${API_BASE}/api/info?url=${encodeURIComponent(raw)}`, ctrl.signal);
+                const data = await res.json();
+                if (state.infoCtrl !== ctrl) return;
+                state.url = raw;
+                state.info = normalizeInfo(data);
+                renderResult();
+                announce(t('foundTracks', { n: state.info.tracks.length }));
+            } catch (err) {
+                if (err && err.name === 'AbortError') return;
+                if (state.infoCtrl !== ctrl) return;
+                showAlert(err instanceof ApiError ? err.message : t('networkError'));
+            } finally {
+                if (state.infoCtrl === ctrl) { state.infoCtrl = null; setLoading(false); }
+            }
+        }
+
+        // Watch URL: prefer the API's url field (http/https only), else build it from the video id.
+        function videoUrl(data) {
+            if (typeof data.url === 'string' && /^https?:\/\//i.test(data.url)) return data.url;
+            return `https://www.youtube.com/watch?v=${encodeURIComponent(data.video_id || '')}`;
+        }
+
+        function normalizeInfo(data) {
+            const tracks = Array.isArray(data && data.tracks) ? data.tracks : [];
+            return {
+                video_id: data.video_id || '',
+                url: videoUrl(data),
+                upload_date: typeof data.upload_date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(data.upload_date) ? data.upload_date : null,
+                title: data.title || data.video_id || '',
+                channel: data.channel || null,
+                duration: typeof data.duration === 'number' ? data.duration : null,
+                thumbnail: data.thumbnail || null,
+                original_language: typeof data.original_language === 'string' && data.original_language ? data.original_language : null,
+                tracks: tracks
+                    .filter((tr) => tr && tr.lang)
+                    // translated: auto caption machine-translated by YouTube. A missing field means false.
+                    .map((tr) => ({ lang: String(tr.lang), name: String(tr.name || tr.lang), auto: !!tr.auto, translated: tr.translated === true })),
+            };
+        }
+
+        // ---------------- Render result ----------------
+        function renderMeta() {
+            const info = state.info;
+            els.title.textContent = info.title;
+            els.title.href = info.url;
+            els.videoLink.href = info.url;
+            els.date.hidden = !info.upload_date;
+            els.dateText.textContent = info.upload_date || '';
+            els.channel.textContent = info.channel || t('unknownChannel');
+            const d = formatDuration(info.duration);
+            els.duration.hidden = !d;
+            els.durationText.textContent = d;
+            // Counts reflect the tracks the page offers (translated tracks are hidden).
+            const n = visibleTracks(info).length;
+            const count = n === 1 ? t('trackCountOne') : t('trackCount', { n: fmtNum(n) });
+            els.trackCount.textContent = count;
+            els.trackGroupCount.textContent = count;
+        }
+
+        function renderResult() {
+            const info = state.info;
+            renderMeta();
+
+            // Thumbnail with graceful fallback.
+            els.thumbImg.hidden = true;
+            els.thumbFallback.hidden = false;
+            els.thumbImg.onload = () => { els.thumbImg.hidden = false; els.thumbFallback.hidden = true; };
+            els.thumbImg.onerror = () => { els.thumbImg.hidden = true; els.thumbFallback.hidden = false; };
+            if (info.thumbnail) els.thumbImg.src = info.thumbnail; else els.thumbImg.removeAttribute('src');
+
+            const visible = visibleTracks(info);
+            renderChips(els.trackChips, visible);
+            els.trackChips.hidden = visible.length === 0;
+            els.tracksEmpty.hidden = visible.length > 0;
+
+            // Preselect the manual track in the video's original language, else the first manual track,
+            // else the single original-language auto track.
+            const manual = visible.filter((i) => !info.tracks[i].auto);
+            const ol = primaryTag(info.original_language);
+            const first = manual.find((i) => ol && primaryTag(info.tracks[i].lang) === ol) ?? manual[0] ?? visible[0] ?? -1;
+            selectTrack(first);
+
+            const hasTracks = first !== -1;
+            els.downloadBtn.disabled = !hasTracks;
+            els.previewBtn.disabled = !hasTracks;
+
+            els.result.hidden = false;
+            els.result.classList.remove('fade-in');
+            void els.result.offsetWidth; // restart the entrance animation
+            els.result.classList.add('fade-in');
+        }
+
+        function displayName(tr) {
+            // The chip already says "auto", so drop a redundant "(auto-generated)" suffix if present.
+            return tr.auto ? tr.name.replace(/\s*\(auto-generated\)\s*$/i, '') || tr.name : tr.name;
+        }
+
+        const primaryTag = (lang) => (lang || '').toLowerCase().split('-')[0];
+
+        // Order a list of track indexes: the first one in the video's original language, then the ones in
+        // PINNED_LANGS (in that order), then the rest sorted by lang. Matching uses the primary subtag.
+        function orderTracks(list, tracks, ol) {
+            const sorted = list.slice().sort((a, b) => tracks[a].lang.localeCompare(tracks[b].lang));
+            const out = [];
+            const take = (test) => sorted.filter((i) => !out.includes(i) && test(primaryTag(tracks[i].lang))).forEach((i) => out.push(i));
+            if (ol) { const first = sorted.find((i) => primaryTag(tracks[i].lang) === ol); if (first !== undefined) out.push(first); }
+            PINNED_LANGS.forEach((p) => take((tag) => tag === p.toLowerCase()));
+            take(() => true);
+            return out;
+        }
+
+        // Track indexes the page shows: all manual tracks, then every -orig auto track (speech recognition of
+        // a real audio track, e.g. en-orig and ko-orig on a dubbed video), each list ordered by orderTracks().
+        // Without any -orig track, a single auto track: the one in the original language, else the first
+        // non-translated one. Machine-translated auto tracks are never shown.
+        function visibleTracks(info) {
+            const tracks = info.tracks;
+            const idx = tracks.map((tr, i) => i);
+            const ol = primaryTag(info.original_language);
+            const manual = orderTracks(idx.filter((i) => !tracks[i].auto), tracks, ol);
+            const autos = idx.filter((i) => tracks[i].auto && !tracks[i].translated);
+            const orig = autos.filter((i) => /-orig$/i.test(tracks[i].lang));
+            if (orig.length) return manual.concat(orderTracks(orig, tracks, ol));
+            let pick = ol ? autos.find((i) => primaryTag(tracks[i].lang) === ol) : undefined;
+            if (pick === undefined) pick = autos[0];
+            return pick === undefined ? manual : manual.concat(pick);
+        }
+
+        function renderChips(container, indexes) {
+            container.textContent = '';
+            const frag = document.createDocumentFragment();
+            indexes.forEach((i) => {
+                const tr = state.info.tracks[i];
+                const id = `track-${i}`;
+                const wrap = document.createElement('div');
+                wrap.className = 'chip max-w-full';
+
+                const input = document.createElement('input');
+                input.type = 'radio';
+                input.name = 'track';
+                input.id = id;
+                input.value = String(i);
+                input.className = 'chip-input sr-only';
+
+                const label = document.createElement('label');
+                label.htmlFor = id;
+                label.className = 'chip-label';
+                label.title = tr.name;
+                const name = document.createElement('span');
+                name.className = 'chip-name';
+                name.textContent = displayName(tr);
+                const code = document.createElement('span');
+                code.className = 'chip-code';
+                code.textContent = tr.lang;
+                label.append(name);
+                // The group mixes manual and auto tracks, so say which one this chip is.
+                const kind = document.createElement('span');
+                kind.className = 'chip-kind';
+                kind.dataset.i18n = tr.auto ? 'kindAuto' : 'kindManual';
+                kind.textContent = t(kind.dataset.i18n);
+                label.append(kind, code);
+
+                wrap.append(input, label);
+                frag.appendChild(wrap);
+            });
+            container.appendChild(frag);
+        }
+
+        function selectTrack(i) {
+            state.selected = i;
+            const input = i >= 0 ? document.getElementById(`track-${i}`) : null;
+            if (input) input.checked = true;
+            renderSelectedLine();
+            resetPreview();
+        }
+
+        function renderSelectedLine() {
+            const tr = currentTrack();
+            els.selectedWrap.hidden = !tr;
+            els.selectedLine.textContent = '';
+            if (!tr) return;
+            const text = t('selectedTrack', {
+                name: displayName(tr), kind: t(tr.auto ? 'kindAuto' : 'kindManual'), lang: tr.lang,
+            });
+            // Render as a muted "Selected:" label plus an outline badge; the text content stays the full sentence.
+            const cut = text.indexOf(': ');
+            const label = document.createElement('span');
+            label.className = 'sel-label';
+            label.textContent = cut === -1 ? '' : text.slice(0, cut + 1);
+            const badge = document.createElement('span');
+            badge.className = 'sel-badge badge badge-outline';
+            badge.textContent = cut === -1 ? text : text.slice(cut + 2);
+            els.selectedLine.append(label, document.createTextNode(cut === -1 ? '' : ' '), badge);
+        }
+
+        // Scroll to the checked chip and move focus to it.
+        els.selectedLine.addEventListener('click', () => {
+            const input = document.querySelector('input[name="track"]:checked');
+            if (!input) return;
+            const chip = input.closest('.chip') || input;
+            const reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+            chip.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'center' });
+            input.focus({ preventScroll: true });
+        });
+
+        document.addEventListener('change', (e) => {
+            const el = e.target;
+            if (el.name === 'track' && el.checked) {
+                state.selected = Number(el.value);
+                renderSelectedLine();
+                resetPreview();
+            } else if (el.name === 'fmt' && el.checked) {
+                state.fmt = el.value;
+                syncLayoutGroup();
+                resetPreview();
+            } else if (el.name === 'layout' && el.checked) {
+                setLayout(el.value);
+                storageSet(LAYOUT_KEY, state.layout);
+                resetPreview();
+            }
+        });
+
+        function setLayout(value) {
+            state.layout = TXT_LAYOUTS.includes(value) ? value : 'paragraphs';
+            const input = document.getElementById(`layout-${state.layout}`);
+            if (input) input.checked = true;
+        }
+        // Hidden (not just disabled) for SRT and VTT.
+        function syncLayoutGroup() { els.layoutGroup.hidden = state.fmt !== 'txt'; }
+
+        // ---------------- Download + preview ----------------
+        function currentTrack() {
+            return state.info && state.selected >= 0 ? state.info.tracks[state.selected] : null;
+        }
+
+        function downloadUrl() {
+            const tr = currentTrack();
+            if (!tr) return null;
+            const params = new URLSearchParams({ url: state.url, lang: tr.lang, auto: String(tr.auto), fmt: state.fmt });
+            if (state.fmt === 'txt') params.set('layout', state.layout);
+            return `${API_BASE}/api/download?${params.toString()}`;
+        }
+
+        // Filename from Content-Disposition (RFC 5987 filename* first), else a sensible default.
+        function filenameFrom(res, tr) {
+            const cd = res.headers.get('Content-Disposition') || '';
+            const star = cd.match(/filename\*\s*=\s*(?:UTF-8|utf-8)''([^;]+)/);
+            if (star) { try { return decodeURIComponent(star[1].trim().replace(/^"|"$/g, '')); } catch (e) { /* fall through */ } }
+            const plain = cd.match(/filename\s*=\s*"([^"]+)"|filename\s*=\s*([^;]+)/);
+            if (plain) return (plain[1] || plain[2]).trim();
+            return `${state.info.video_id || 'subtitles'}.${tr.lang}${tr.auto ? '.auto' : ''}.${state.fmt}`;
+        }
+
+        function setDownloadLoading(on) {
+            els.downloadSpinner.hidden = !on;
+            els.downloadIcon.style.display = on ? 'none' : '';
+            els.downloadBtn.disabled = on || !currentTrack();
+            els.downloadBtn.setAttribute('aria-busy', String(on));
+        }
+
+        // Fetch first, then save through a hidden <a download>, so API errors show in the alert
+        // instead of the browser saving the JSON error body as a file.
+        els.downloadBtn.addEventListener('click', async () => {
+            const url = downloadUrl();
+            const tr = currentTrack();
+            if (!url || !tr) return;
+            hideAlert();
+            setDownloadLoading(true);
+            try {
+                const res = await apiFetch(url);
+                const blob = await res.blob();
+                const objectUrl = URL.createObjectURL(blob);
+                els.downloadLink.href = objectUrl;
+                els.downloadLink.download = filenameFrom(res, tr);
+                els.downloadLink.click();
+                setTimeout(() => URL.revokeObjectURL(objectUrl), 10000);
+                announce(t('downloadStarted'));
+            } catch (err) {
+                showAlert(err instanceof ApiError ? err.message : t('networkError'));
+            } finally {
+                setDownloadLoading(false);
+            }
+        });
+
+        function cancelPreview() {
+            if (state.previewCtrl) state.previewCtrl.abort();
+            state.previewCtrl = null;
+            setPreviewLoading(false);
+        }
+
+        function resetPreview() {
+            cancelPreview();
+            state.previewText = '';
+            state.previewShown = 0;
+            els.previewPanel.hidden = true;
+            els.previewPre.textContent = '';
+        }
+
+        function setPreviewLoading(on) {
+            els.previewSpinner.hidden = !on;
+            els.previewIcon.style.display = on ? 'none' : '';
+            els.previewBtn.disabled = on || !currentTrack();
+            els.previewBtn.setAttribute('aria-busy', String(on));
+        }
+
+        function renderPreviewCount() {
+            const total = state.previewText.length;
+            if (total === 0) els.previewCount.textContent = t('previewEmpty');
+            else if (total <= PREVIEW_LIMIT) els.previewCount.textContent = t('previewAll', { total: fmtNum(total) });
+            else els.previewCount.textContent = t('previewPart', { shown: fmtNum(state.previewShown), total: fmtNum(total) });
+        }
+
+        els.previewBtn.addEventListener('click', async () => {
+            const url = downloadUrl();
+            if (!url) return;
+            hideAlert();
+            cancelPreview();
+            const ctrl = new AbortController();
+            state.previewCtrl = ctrl;
+            setPreviewLoading(true);
+            try {
+                const res = await apiFetch(url, ctrl.signal);
+                const text = await res.text();
+                if (state.previewCtrl !== ctrl) return;
+                state.previewText = text;
+                state.previewShown = Math.min(text.length, PREVIEW_LIMIT);
+                els.previewPre.textContent = text.slice(0, PREVIEW_LIMIT);
+                els.previewPre.scrollTop = 0;
+                renderPreviewCount();
+                resetCopyLabel();
+                els.previewPanel.hidden = false;
+                announce(t('previewReady'));
+            } catch (err) {
+                if (err && err.name === 'AbortError') return;
+                if (state.previewCtrl !== ctrl) return;
+                showAlert(err instanceof ApiError ? err.message : t('networkError'));
+            } finally {
+                if (state.previewCtrl === ctrl) { state.previewCtrl = null; setPreviewLoading(false); }
+            }
+        });
+
+        // ---------------- Copy ----------------
+        let copyTimer = null;
+        function resetCopyLabel() {
+            clearTimeout(copyTimer);
+            els.copyLabel.dataset.i18n = 'copy';
+            els.copyLabel.textContent = t('copy');
+        }
+        function flashCopyLabel(key) {
+            els.copyLabel.dataset.i18n = key;
+            els.copyLabel.textContent = t(key);
+            announce(t(key));
+            clearTimeout(copyTimer);
+            copyTimer = setTimeout(resetCopyLabel, 1800);
+        }
+        function legacyCopy(text) {
+            const ta = document.createElement('textarea');
+            ta.value = text;
+            ta.setAttribute('readonly', '');
+            ta.style.position = 'fixed';
+            ta.style.top = '-1000px';
+            ta.style.opacity = '0';
+            document.body.appendChild(ta);
+            ta.select();
+            let ok = false;
+            try { ok = document.execCommand('copy'); } catch (e) { ok = false; }
+            ta.remove();
+            return ok;
+        }
+        els.copyBtn.addEventListener('click', async () => {
+            const text = state.previewText;
+            if (!text) return;
+            let ok = false;
+            if (navigator.clipboard && window.isSecureContext) {
+                try { await navigator.clipboard.writeText(text); ok = true; } catch (e) { ok = false; }
+            }
+            if (!ok) ok = legacyCopy(text);
+            flashCopyLabel(ok ? 'copied' : 'copyFailed');
+        });
+
+        // ---------------- Form wiring ----------------
+        els.form.addEventListener('submit', (e) => { e.preventDefault(); fetchInfo(); });
+        els.input.addEventListener('input', () => { if (state.urlErrorKey) clearUrlError(); syncUrlCopy(); });
+
+        // ---------------- Copy link (button inside the URL input) ----------------
+        const urlCopyBtn = $('url-copy-btn');
+        const urlCopyIcon = $('url-copy-icon');
+        const urlCopiedIcon = $('url-copied-icon');
+        let urlCopyTimer = null;
+        function syncUrlCopy() { urlCopyBtn.disabled = !els.input.value.trim(); }
+        function showUrlCopied(on) {
+            urlCopyIcon.style.display = on ? 'none' : '';
+            urlCopiedIcon.style.display = on ? '' : 'none';
+            urlCopyBtn.dataset.copied = String(on);
+        }
+        urlCopyBtn.addEventListener('click', async () => {
+            const text = els.input.value.trim();
+            if (!text) return;
+            let ok = false;
+            if (navigator.clipboard && window.isSecureContext) {
+                try { await navigator.clipboard.writeText(text); ok = true; } catch (e) { ok = false; }
+            }
+            if (!ok) { ok = legacyCopy(text); urlCopyBtn.focus(); } // plain-HTTP deployments have no async clipboard
+            if (!ok) { announce(t('copyFailed')); return; }
+            showUrlCopied(true);
+            announce(t('linkCopied'));
+            clearTimeout(urlCopyTimer);
+            urlCopyTimer = setTimeout(() => showUrlCopied(false), 1500);
+        });
+        els.input.addEventListener('paste', () => { setTimeout(syncUrlCopy, 0); });
+
+        // ---------------- Paste link (button inside the URL input) ----------------
+        const urlPasteBtn = $('url-paste-btn');
+        const urlPasteHint = $('url-paste-hint');
+        let pasteHintTimer = null;
+        function showPasteHint() {
+            // Clipboard read is unavailable or was denied: let the user paste with the keyboard.
+            els.input.focus();
+            els.input.select();
+            urlPasteHint.textContent = t('pasteHint');
+            urlPasteHint.hidden = false;
+            announce(t('pasteHint'));
+            clearTimeout(pasteHintTimer);
+            pasteHintTimer = setTimeout(() => { urlPasteHint.hidden = true; }, 3000);
+        }
+        urlPasteBtn.addEventListener('click', async () => {
+            let text = '';
+            if (navigator.clipboard && typeof navigator.clipboard.readText === 'function') {
+                try { text = (await navigator.clipboard.readText() || '').trim(); } catch (e) { text = ''; }
+            }
+            if (!text) { showPasteHint(); return; }
+            clearTimeout(pasteHintTimer);
+            urlPasteHint.hidden = true;
+            els.input.value = text;
+            // Same path as a native paste: input listeners (clear error, enable copy), then the paste
+            // listeners (auto-fetch when it is a YouTube link).
+            els.input.dispatchEvent(new Event('input', { bubbles: true }));
+            els.input.dispatchEvent(new Event('paste', { bubbles: true }));
+            announce(t('linkPasted'));
+        });
+        els.input.addEventListener('paste', () => {
+            // Wait for the pasted text to land in the input, then auto-fetch if it is a YouTube link.
+            setTimeout(() => {
+                const v = els.input.value.trim();
+                if (v && looksLikeYouTube(v)) fetchInfo();
+            }, 0);
+        });
+
+        // ---------------- Init ----------------
+        setTheme(els.html.dataset.theme === 'dark' ? 'dark' : 'light');
+        setLayout(storageGet(LAYOUT_KEY));
+        syncUrlCopy();
+        syncLayoutGroup();
+        applyLang(storageGet('yts_lang') || 'en');
+    })();
+    </script>
+</body>
+</html>

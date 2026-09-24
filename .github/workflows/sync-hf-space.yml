@@ -1,0 +1,52 @@
+# Mirrors youtube-subtitles/ to the root of a Hugging Face Space (Docker SDK).
+# Setup: repository secret HF_TOKEN (a Hugging Face write token) and repository
+# variable HF_SPACE ("<hf-username>/<space-name>"). Without them the job skips.
+name: Sync Hugging Face Space
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "youtube-subtitles/**"
+      - ".github/workflows/sync-hf-space.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: sync-hf-space
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    env:
+      HF_TOKEN: ${{ secrets.HF_TOKEN }}
+      HF_SPACE: ${{ vars.HF_SPACE }}
+    steps:
+      - name: Check configuration
+        id: config
+        run: |
+          if [ -z "$HF_TOKEN" ] || [ -z "$HF_SPACE" ]; then
+            echo "::notice title=Hugging Face sync skipped::Set the HF_TOKEN secret and the HF_SPACE variable (<hf-username>/<space-name>) to enable it."
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Check out repository
+        if: steps.config.outputs.enabled == 'true'
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Push youtube-subtitles/ to the Space
+        if: steps.config.outputs.enabled == 'true'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git subtree split --prefix youtube-subtitles -b hf-sync
+          # The Space git repo uses main as its default branch.
+          git push --force "https://user:${HF_TOKEN}@huggingface.co/spaces/${HF_SPACE}" hf-sync:main

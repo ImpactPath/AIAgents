@@ -1,0 +1,16 @@
+# Render Blueprint: deploys youtube-subtitles/ as a free Docker web service.
+# In the Render dashboard choose New > Blueprint, pick this repository, and click Apply.
+services:
+  - type: web
+    name: youtube-subtitles
+    runtime: docker
+    plan: free
+    region: singapore
+    rootDir: youtube-subtitles
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /healthz
+    autoDeploy: true
+    envVars:
+      - key: MCP_API_KEY
+        generateValue: true
+      # PUBLIC_BASE_URL is optional: the app falls back to RENDER_EXTERNAL_URL, which Render sets.

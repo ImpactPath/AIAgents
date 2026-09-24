@@ -1,0 +1,11 @@
+fastapi>=0.110
+uvicorn[standard]>=0.29
+# yt-dlp changes often to keep up with YouTube; rebuild to pick up new releases.
+# [default] adds yt-dlp-ejs and friends, [deno] ships the JS runtime YouTube extraction now needs.
+yt-dlp[default,deno]>=2025.11.12
+# PO token provider plugin; talks to the bgutil node server that start.sh runs on 127.0.0.1:4416.
+bgutil-ytdlp-pot-provider>=2.0,<3
+# MCP server at /mcp (python SDK v2: MCPServer).
+mcp>=2.2,<3
+httpx>=0.27
+pytest>=8
