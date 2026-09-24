@@ -24,8 +24,9 @@ from app.convert import FORMATS, LAYOUTS, convert
 from app.youtube import safe_title  # noqa: F401  (re-exported for tests)
 
 log = logging.getLogger(__name__)
-if not logging.getLogger().handlers:  # uvicorn only configures its own loggers
-    logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(message)s")
+# uvicorn only configures its own loggers; give ours a timestamped handler so the log can be matched
+# against what the user saw in the client (force=True replaces a bare handler a dependency may have added).
+logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s", force=True)
 
 STATIC_DIR = Path(__file__).resolve().parent.parent / "static"
 MEDIA_TYPES = {
