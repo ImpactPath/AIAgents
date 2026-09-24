@@ -100,21 +100,20 @@ def test_upload_date_parsing(raw, expected):
 
 
 @pytest.mark.parametrize(
-    "name,lang,auto,expected",
+    "name,lang,expected",
     [
-        ("English (Original)", "en-orig", True, "English (unedited)"),
-        ("English (auto-generated)", "en", True, "English"),
-        ("English", "en", False, "English"),
-        ("English (Original)", "en", False, "English"),
-        ("Korean - auto-generated", "ko", True, "Korean"),
-        ("  English   (ORIGINAL)  ", "en-orig", True, "English (unedited)"),
-        ("", "fr", True, "fr"),
-        (None, "de-orig", True, "de-orig (unedited)"),
-        ("(auto-generated)", "ja", True, "ja"),
+        ("English (Original)", "en-orig", "English"),
+        ("English (auto-generated)", "en", "English"),
+        ("English", "en", "English"),
+        ("Korean - auto-generated", "ko", "Korean"),
+        ("  English   (ORIGINAL)  ", "en-orig", "English"),
+        ("", "fr", "fr"),
+        (None, "de-orig", "de-orig"),
+        ("(auto-generated)", "ja", "ja"),
     ],
 )
-def test_clean_track_name(name, lang, auto, expected):
-    assert youtube.clean_track_name(name, lang, auto) == expected
+def test_clean_track_name(name, lang, expected):
+    assert youtube.clean_track_name(name, lang) == expected
 
 
 def test_normalize_info_names_orig_track():
@@ -123,7 +122,7 @@ def test_normalize_info_names_orig_track():
         "en": [{"ext": "vtt", "url": "b", "name": "English (auto-generated)"}],
     }
     tracks = normalize_info(VID, {"title": "T", "automatic_captions": auto}).tracks
-    assert [(t.lang, t.name) for t in tracks] == [("en", "English"), ("en-orig", "English (unedited)")]
+    assert [(t.lang, t.name) for t in tracks] == [("en", "English"), ("en-orig", "English")]
 
 
 def test_normalize_info_ordering_and_entry_choice():
@@ -319,9 +318,9 @@ HEADER_LINES = (
 @pytest.mark.parametrize(
     "fmt,expected",
     [
-        ("txt", HEADER_LINES + "Subtitles: English [original] (en)\n\nHello there General Kenobi\n"),
-        ("srt", "1\n00:00:00,000 --> 00:00:00,001\n" + HEADER_LINES + "Subtitles: English [original] (en)\n\n2\n00:00:01,000"),
-        ("vtt", "WEBVTT\n\nNOTE\n" + HEADER_LINES + "Subtitles: English [original] (en)\n\n00:00:01.000 --> 00:00:02.000\n"),
+        ("txt", HEADER_LINES + "Subtitles: English (en, original)\n\nHello there General Kenobi\n"),
+        ("srt", "1\n00:00:00,000 --> 00:00:00,001\n" + HEADER_LINES + "Subtitles: English (en, original)\n\n2\n00:00:01,000"),
+        ("vtt", "WEBVTT\n\nNOTE\n" + HEADER_LINES + "Subtitles: English (en, original)\n\n00:00:01.000 --> 00:00:02.000\n"),
     ],
 )
 def test_download_header_on_by_default(client, fmt, expected):
@@ -332,7 +331,7 @@ def test_download_header_on_by_default(client, fmt, expected):
 def test_download_header_auto_track_and_off(client):
     params = {"url": URL, "lang": "en", "auto": "1", "fmt": "txt"}
     on = client.get("/api/download", params={**params, "header": "true"}).text
-    assert "Subtitles: English [auto-generated] (en)\n" in on
+    assert "Subtitles: English (en, auto)\n" in on
     off = client.get("/api/download", params={**params, "header": "0"}).text
     assert off == "Hello there General Kenobi\n"
 
@@ -342,7 +341,7 @@ def test_download_header_omits_missing_fields(client, monkeypatch):
     info.channel = None
     monkeypatch.setattr(youtube, "fetch_info", lambda vid: info)
     text = client.get("/api/download", params={"url": URL, "lang": "ko", "fmt": "txt"}).text
-    assert text.startswith(f"Title: Never Gonna Give You Up\nDuration: 03:32\nURL: {URL}\nSubtitles: Korean [original] (ko)\n\n")
+    assert text.startswith(f"Title: Never Gonna Give You Up\nDuration: 03:32\nURL: {URL}\nSubtitles: Korean (ko, original)\n\n")
 
 
 def test_download_defaults_and_auto_suffix(client):

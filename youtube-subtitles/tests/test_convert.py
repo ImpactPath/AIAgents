@@ -243,7 +243,7 @@ META = {
     "duration": 3723,
     "upload_date": "2026-09-20",
     "url": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
-    "track_name": "English (unedited)",
+    "track_name": "English",
     "track_lang": "en-orig",
     "track_auto": True,
 }
@@ -253,7 +253,7 @@ META_LINES = [
     "Duration: 1:02:03",
     "Published: 2026-09-20",
     "URL: https://www.youtube.com/watch?v=dQw4w9WgXcQ",
-    "Subtitles: English (unedited) [auto-generated] (en-orig)",
+    "Subtitles: English (en-orig, auto)",
 ]
 HEADER_VTT = (
     "WEBVTT\n\n00:00:00.000 --> 00:00:02.000\nFirst cue.\n\n00:00:03.000 --> 00:00:04.000\nSecond cue.\n"
@@ -277,7 +277,7 @@ def test_render_header_omits_missing_and_sanitizes():
     lines = render_header(meta, "txt").splitlines()
     assert lines[0] == "Title: Multi line -> title"
     assert not any(line.startswith(("Channel:", "Published:")) for line in lines)
-    assert lines[-2] == "Subtitles: Korean [original] (ko)" and lines[-1] == ""
+    assert lines[-2] == "Subtitles: Korean (ko, original)" and lines[-1] == ""
     assert render_header({}, "txt") == ""
     for fmt in ("srt", "vtt", "txt"):
         assert "-->" not in render_header(meta, fmt).replace("00:00:00,000 --> 00:00:00,001", "")
@@ -314,9 +314,10 @@ def test_header_none_or_no_cues_changes_nothing():
 @pytest.mark.parametrize(
     "name,lang,auto,line",
     [
-        ("English", "en", False, "Subtitles: English [original] (en)"),
-        ("English (unedited)", "en-orig", True, "Subtitles: English (unedited) [auto-generated] (en-orig)"),
-        ("English (auto-generated)", "en", True, "Subtitles: English [auto-generated] (en)"),
+        ("English", "en", False, "Subtitles: English (en, original)"),
+        ("English", "en-orig", True, "Subtitles: English (en-orig, auto)"),
+        ("English (auto-generated)", "en", True, "Subtitles: English (en, auto)"),
+        ("", "ko", False, "Subtitles: ko (ko, original)"),
     ],
 )
 def test_header_subtitles_line(name, lang, auto, line):

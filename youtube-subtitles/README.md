@@ -49,10 +49,10 @@ The image runs as a non-root user (uid 1000) and listens on `$PORT`, defaulting 
 | `GET /api/info?url=<url or id>` | Title, channel, duration, thumbnail, `upload_date` (ISO `YYYY-MM-DD` or null), `url` (canonical watch URL) and `tracks: [{lang, name, auto}]` (manual tracks first) |
 | `GET /api/download?url=&lang=en&auto=false&fmt=srt&layout=paragraphs&header=1` | The subtitle file as an attachment. `fmt` is `srt`, `vtt` or `txt`; `auto` is `true/false/1/0`; `layout` (TXT only, ignored for SRT/VTT) is `paragraphs` (default: sentences grouped into paragraphs, split at pauses of 2 s or more or after about 600 characters), `sentences` (one sentence per line) or `cues` (one caption cue per line, the raw timing breaks); `header` (`true/false/1/0`, default on) starts the file with the title, channel, duration, publish date, URL and track (a `NOTE` block in VTT, a 0 to 1 ms first cue in SRT, plain lines in TXT) |
 
-Track names are normalized: YouTube's "(Original)" and "(auto-generated)" are removed (the `auto` flag
-says whether a track is auto-generated), and the unedited speech-recognition track (`<lang>-orig`, for
-example `en-orig`) is named "English (unedited)". In file headers, manual tracks are tagged `[original]`
-(uploader-provided) and auto tracks `[auto-generated]`.
+Track names are normalized: YouTube's "(Original)" and "(auto-generated)" are removed, so the `en-orig`
+auto track is just "English"; the `lang` code and the `auto` flag carry the distinction. File headers
+read `Subtitles: English (en, original)` for manual (uploader-provided) tracks and
+`Subtitles: English (en-orig, auto)` for auto tracks.
 
 Errors are JSON `{"detail": "..."}`: 400 for an invalid URL or parameter, 404 when the video (or the
 requested track) has no subtitles, 502 when yt-dlp fails (private, removed, geo-blocked, bot check,
