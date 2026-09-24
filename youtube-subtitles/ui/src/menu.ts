@@ -344,17 +344,27 @@ function subtitleArgs(extra: Record<string, unknown>): Record<string, unknown> {
   };
 }
 
+// Percent-encoding survives into the saved file name on some hosts, so keep names to [A-Za-z0-9._-].
+function fileSafeName(name: string, fallback: string, ext: string): string {
+  const dot = name.lastIndexOf(".");
+  const base = dot > 0 ? name.slice(0, dot) : name;
+  const suffix = dot > 0 ? name.slice(dot + 1) : ext;
+  let stem = base.normalize("NFKD").replace(/[^A-Za-z0-9._-]+/g, "_").replace(/^_+|_+$/g, "").replace(/_{2,}/g, "_");
+  if (stem.replace(/[._-]/g, "").length < 3) stem = fallback;
+  return `${stem.slice(0, 120)}.${suffix.replace(/[^A-Za-z0-9]/g, "") || ext}`;
+}
+
 // Host-side download: fetch the file through get_subtitles and hand its embedded resource to the host.
 async function downloadViaHost(): Promise<void> {
   const result = await app.callServerTool({ name: "get_subtitles", arguments: subtitleArgs({ attach: true }) });
   if (result.isError) throw new Error(textOf(result) || L.error);
   const block = result.content.find((b): b is Extract<Block, { type: "resource" }> => b.type === "resource");
   if (!block) throw new Error("get_subtitles returned no file.");
-  // Hosts name the saved file after the URI; use the file name from the resource link when there is one.
+  // Hosts name the saved file after the last URI segment and keep it percent-encoded, so build an
+  // ASCII-safe name (spaces and other unsafe characters become underscores); fall back to the video id.
   const link = result.content.find((b): b is Extract<Block, { type: "resource_link" }> => b.type === "resource_link");
-  const named = link?.name
-    ? { ...block, resource: { ...block.resource, uri: `file:///${encodeURIComponent(link.name)}` } }
-    : block;
+  const safeName = fileSafeName(link?.name ?? "", data?.video.video_id ?? "subtitles", fmt);
+  const named = { ...block, resource: { ...block.resource, uri: `file:///${safeName}` } };
   const res = await app.downloadFile({ contents: [named] });
   if (res?.isError) throw new Error("The host did not save the file.");
 }
