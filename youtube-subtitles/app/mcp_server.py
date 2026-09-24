@@ -18,6 +18,7 @@ import inspect
 import json
 import logging
 import os
+from collections import OrderedDict
 from pathlib import Path
 from typing import Annotated, Literal
 from urllib.parse import quote, urlencode
@@ -28,6 +29,7 @@ from mcp.server.mcpserver import Context, MCPServer
 from mcp.server.mcpserver.exceptions import ResourceError, ToolError
 from mcp.server.transport_security import TransportSecuritySettings
 from mcp.types import CallToolResult, EmbeddedResource, ResourceLink, TextContent, TextResourceContents
+from pydantic import Field
 from starlette.applications import Starlette
 from typing_extensions import TypedDict  # pydantic needs this TypedDict on Python < 3.12
 
@@ -50,7 +52,9 @@ INSTRUCTIONS = (
     "get_download_link and show its download_url as a clickable link; it is a public HTTPS address that works "
     "on any device. Machine-translated YouTube captions are rate-limited and hidden; download the original "
     "language and translate the text yourself if another language is needed. get_subtitles also attaches the "
-    "file as a resource; tell the user it is attached if the client shows it."
+    "file as a resource; tell the user it is attached if the client shows it. get_subtitles and "
+    "get_download_link refuse to run until user_confirmed=true and get_video_info was called for that video "
+    "in this session."
 )
 MENU_HINT = (
     "If the interactive subtitle menu is shown, the user picks there: wait for their choice. Otherwise, "
@@ -77,6 +81,20 @@ READY_NOTE = (
     "Open the link in any browser on any device to save the file. It is a public HTTPS address: no login, "
     "no Tailscale or VPN needed. Tell the user exactly that."
 )
+USER_CONFIRMED_DESCRIPTION = (
+    "Set true only after the user explicitly chose what to do: they picked an action in the subtitle menu, "
+    "answered your question, or their request itself was explicit (for example 'summarize this video'). "
+    "When the user only shared a link, leave it false, call get_video_info, and ask."
+)
+NOT_CONFIRMED_ERROR = (
+    "The user has not chosen yet. Call get_video_info first (it shows the subtitle menu), ask the user what "
+    "they want (step 1: download file, summary, translation or key points; step 2, for downloads: which track "
+    "and which format), then call this tool again with user_confirmed=true."
+)
+NOT_LOOKED_UP_ERROR = "Call get_video_info for this video first so the user can see the tracks and choose."
+UserConfirmed = Annotated[bool, Field(description=USER_CONFIRMED_DESCRIPTION)]
+MAX_GATED_SESSIONS = 1024  # sessions remembered by the get_video_info gate (least recently used dropped)
+MAX_GATED_VIDEOS = 64  # video ids remembered per session
 MIME_TYPES = {"txt": "text/plain", "srt": "application/x-subrip", "vtt": "text/vtt"}
 URI_SCHEME = "subtitles://"
 TRACK_URI_PREFIX = URI_SCHEME + "video/"  # constant host: clients may lowercase a URI host, ids are case-sensitive
@@ -237,6 +255,64 @@ def build_http_app() -> Starlette:
     )
 
 
+# Per MCP session: the video ids get_video_info was called for, so get_subtitles and get_download_link can
+# refuse a video the user has not seen the menu for. Keyed by the Mcp-Session-Id the session manager already
+# validated (an unknown id is answered 404 before any tool runs); entries are dropped when the session's
+# connection closes, and the dict is capped as a fallback.
+_looked_up: OrderedDict[str, OrderedDict[str, None]] = OrderedDict()
+LOCAL_SESSION = "local"  # stdio (one client per process), a request without a session id, or a direct call
+
+
+def _session_key(ctx: Context) -> str:
+    """A stable id for the MCP session carrying this request.
+
+    The SDK builds a new ServerSession per request, so its identity is not stable; the Mcp-Session-Id
+    header (the same value as the connection's session_id) is.
+    """
+    try:
+        request_context = ctx.request_context
+    except (ValueError, RuntimeError):  # no active request (a direct call)
+        return LOCAL_SESSION
+    headers = getattr(request_context.request, "headers", None)
+    session_id = headers.get("mcp-session-id") if headers else None
+    return f"http:{session_id}" if session_id else LOCAL_SESSION
+
+
+def _forget_session(key: str) -> None:
+    _looked_up.pop(key, None)
+
+
+def _remember_video(ctx: Context, video_id: str) -> None:
+    key = _session_key(ctx)
+    videos = _looked_up.get(key)
+    if videos is None:
+        videos = _looked_up[key] = OrderedDict()
+        # Clear the entry when the connection closes (its exit stack unwinds on DELETE, idle timeout or crash).
+        connection = getattr(getattr(ctx, "session", None), "_connection", None) if key != LOCAL_SESSION else None
+        exit_stack = getattr(connection, "exit_stack", None)
+        if exit_stack is not None:
+            exit_stack.callback(_forget_session, key)
+    _looked_up.move_to_end(key)
+    videos[video_id] = None
+    videos.move_to_end(video_id)
+    while len(videos) > MAX_GATED_VIDEOS:
+        videos.popitem(last=False)
+    while len(_looked_up) > MAX_GATED_SESSIONS:
+        _looked_up.popitem(last=False)
+
+
+def _require_choice(url: str, ctx: Context, user_confirmed: bool) -> None:
+    """Refuse unless the user chose (user_confirmed) and get_video_info ran for this video in this session."""
+    if not user_confirmed:
+        raise ToolError(NOT_CONFIRMED_ERROR)
+    video_id = youtube.parse_video_id(url)
+    if not video_id:
+        raise ToolError(youtube.INVALID_URL)
+    videos = _looked_up.get(_session_key(ctx))
+    if videos is None or video_id not in videos:
+        raise ToolError(NOT_LOOKED_UP_ERROR)
+
+
 async def _load(url: str) -> youtube.VideoInfo:
     video_id = youtube.parse_video_id(url)
     if not video_id:
@@ -326,6 +402,8 @@ def _truncate(text: str, max_chars: int) -> str:
 
 async def get_subtitles(
     url: str,
+    ctx: Context,
+    user_confirmed: UserConfirmed = False,
     lang: str | None = None,
     auto: bool | None = None,
     fmt: Literal["txt", "srt", "vtt"] = "txt",
@@ -334,7 +412,7 @@ async def get_subtitles(
     max_chars: int = 200000,
     attach: bool = True,
 ) -> list[TextContent | EmbeddedResource | ResourceLink]:
-    """Download the subtitles of a YouTube video as text.
+    """Requires user_confirmed=true; see that parameter. Download the subtitles of a YouTube video as text.
 
     Call this only after the user picked what they want from the subtitle menu, or when the
     request already makes it clear (for example "summarize this video": the recommended track as TXT
@@ -357,6 +435,7 @@ async def get_subtitles(
     Machine-translated auto captions (another language than the video's) are rate-limited by YouTube
     (HTTP 429); fetch the original language instead and translate the text yourself.
     """
+    _require_choice(url, ctx, user_confirmed)
     if max_chars < 1:
         raise ToolError("max_chars must be a positive number.")
     info = await _load(url)
@@ -381,13 +460,15 @@ async def get_subtitles(
 async def get_download_link(
     url: str,
     ctx: Context,
+    user_confirmed: UserConfirmed = False,
     lang: str | None = None,
     auto: bool | None = None,
     fmt: Literal["txt", "srt", "vtt"] = "txt",
     layout: Literal["paragraphs", "sentences", "cues"] = "paragraphs",
     include_header: bool = True,
 ) -> DownloadLinkOut:
-    """Build a clickable link that downloads one subtitle track as a file from the web app.
+    """Requires user_confirmed=true; see that parameter. Build a clickable link that downloads one subtitle
+    track as a file from the web app.
 
     Use it when the user chose "download link" or asks for a file. It is fast: it resolves the track
     but does not download the subtitles. Show `download_url` to the user as a clickable link.
@@ -395,6 +476,7 @@ async def get_download_link(
     (default: the recommended track, TXT, paragraphs, with header).
     Returns `download_url`, `web_app_url`, `filename`, `track` ({lang, name, auto}) and `note`.
     """
+    _require_choice(url, ctx, user_confirmed)
     info = await _load(url)
     track = _pick_track(info, (lang or "").strip() or None, auto)
     if fmt != "txt":
@@ -513,6 +595,7 @@ async def get_video_info(url: str, ctx: Context) -> Annotated[CallToolResult, Vi
     the text menu with UNDECLARED_APPS_NOTE, since the host may still render the view.
     """
     info = await _load(url)
+    _remember_video(ctx, info.video_id)
     data = _video_info_data(info, _base_url(ctx))
     apps_support = _apps_support(ctx)
     if apps_support:

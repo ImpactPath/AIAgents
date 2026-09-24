@@ -339,6 +339,7 @@ function subtitleArgs(extra: Record<string, unknown>): Record<string, unknown> {
     fmt,
     layout: fmt === "txt" ? layout : "cues",
     include_header: true,
+    user_confirmed: true, // the user picked this action in the menu; the server refuses get_subtitles without it
     ...extra,
   };
 }
@@ -475,6 +476,7 @@ function promptText(kind: string): string {
   const answer = kind === "translate" ? "" : ` Answer in ${answerLanguage()}.`;
   return (
     `Using get_subtitles with url=${v.url}, lang=${t.lang}, auto=${t.auto}, fmt=txt, layout=paragraphs, ` +
+    `user_confirmed=true, ` +
     `fetch the subtitles of '${v.title}' and ${task[kind]}.${answer}`
   );
 }

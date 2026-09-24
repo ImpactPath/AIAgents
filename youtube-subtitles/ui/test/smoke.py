@@ -145,6 +145,10 @@ window.addEventListener('message', (e) => {
       break;
     case 'tools/call': {
       const a = m.params.arguments || {};
+      if (a.user_confirmed !== true) {  // the server refuses get_subtitles without user_confirmed=true
+        reply(m.id, { isError: true, content: [{ type: 'text', text: 'The user has not chosen yet.' }] });
+        break;
+      }
       const content = [{ type: 'text', text: SUB_TEXT }];
       if (a.attach) {
         const uri = `subtitles://video/dQw4w9WgXcQ/${a.lang}/${a.auto}/${a.fmt}/${a.layout}`;
@@ -280,6 +284,7 @@ def dark_korean(browser, shots: Path) -> None:
     args = call["params"]["arguments"]
     check(call["params"]["name"] == "get_subtitles" and args["attach"] is True and args["include_header"] is True,
           "tools/call get_subtitles with attach and include_header")
+    check(args["user_confirmed"] is True, "Download sends user_confirmed true")
     check((args["url"], args["lang"], args["auto"], args["fmt"]) == (VIDEO_URL, "en", False, "srt"),
           "tools/call arguments follow the selection")
     dl = next(m for m in run.log() if m.get("method") == "ui/download-file")
@@ -298,6 +303,7 @@ def dark_korean(browser, shots: Path) -> None:
     text = msg["params"]["content"][0]["text"]
     check(msg["params"]["role"] == "user" and "get_subtitles" in text and "summarize" in text and "Korean" in text,
           "Summarize sends ui/message role user")
+    check("user_confirmed=true" in text, "Summarize prompt asks for user_confirmed=true")
     f.locator("#notice").wait_for(state="visible")
     check(not run.errors, "no console errors (dark, ko-KR)")
     page.close()
@@ -317,6 +323,7 @@ def light_english(browser, shots: Path) -> None:
     call = [m for m in run.log() if m.get("method") == "tools/call"][-1]
     check(call["params"]["arguments"]["attach"] is False and call["params"]["arguments"]["max_chars"] == 20000,
           "Preview calls get_subtitles with attach false, max_chars 20000")
+    check(call["params"]["arguments"]["user_confirmed"] is True, "Preview sends user_confirmed true")
     check(f.locator("#preview-text").inner_text().startswith("Green growth"), "Preview shows the text")
     run.settle()
     page.locator("#view").screenshot(path=str(shots / "menu-400-light-en-preview.png"))

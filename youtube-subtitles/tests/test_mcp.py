@@ -102,6 +102,21 @@ def call(client, name, *, headers=None, **arguments):
     return r.json()["result"]
 
 
+def pick(client, name, *, headers=None, **arguments):
+    """The flow the server enforces: get_video_info on the session, then `name` with user_confirmed=true."""
+    call(client, "get_video_info", headers=headers, url=arguments.get("url", VID))
+    return call(client, name, headers=headers, user_confirmed=True, **arguments)
+
+
+USER_CONFIRMED_DESCRIPTION = (
+    "Set true only after the user explicitly chose what to do: they picked an action in the subtitle menu, "
+    "answered your question, or their request itself was explicit (for example 'summarize this video'). "
+    "When the user only shared a link, leave it false, call get_video_info, and ask."
+)
+NOT_CONFIRMED = "The user has not chosen yet. Call get_video_info first (it shows the subtitle menu)"
+NOT_LOOKED_UP = "Call get_video_info for this video first so the user can see the tracks and choose."
+
+
 def text_of(result):
     return result["content"][0]["text"]
 
@@ -140,9 +155,16 @@ def test_initialize_and_tools_list(client):
     link_tool = tools["get_download_link"]
     link_props = link_tool["inputSchema"]["properties"]
     assert link_tool["inputSchema"]["required"] == ["url"] and "ctx" not in link_props
-    assert set(link_props) == {"url", "lang", "auto", "fmt", "layout", "include_header"}
+    assert set(link_props) == {"url", "user_confirmed", "lang", "auto", "fmt", "layout", "include_header"}
     assert link_props["fmt"]["enum"] == ["txt", "srt", "vtt"] and link_props["layout"]["default"] == "paragraphs"
     assert {"download_url", "web_app_url", "filename", "track", "note"} <= set(link_tool["outputSchema"]["properties"])
+    for tool in (subs_tool, link_tool):
+        assert tool["description"].startswith("Requires user_confirmed=true; see that parameter. ")
+        confirmed = tool["inputSchema"]["properties"]["user_confirmed"]
+        assert confirmed["type"] == "boolean" and confirmed["default"] is False
+        assert confirmed["description"] == USER_CONFIRMED_DESCRIPTION
+    assert ("get_subtitles and get_download_link refuse to run until user_confirmed=true and get_video_info was "
+            "called for that video in this session.") in instructions
 
 
 def test_mcp_path_without_and_with_trailing_slash(client):
@@ -183,7 +205,7 @@ def test_get_video_info_without_orig_track_keeps_one_auto(client, info_holder):
 
 
 def test_get_subtitles_default_track_with_header(client, info_holder):
-    result = call(client, "get_subtitles", url=VID)
+    result = pick(client, "get_subtitles", url=VID)
     assert result["isError"] is False and "structuredContent" not in result
     text = text_of(result)
     assert text.startswith("Title: Never Gonna Give You Up\nChannel: Rick Astley\n")
@@ -202,33 +224,33 @@ def test_get_subtitles_default_track_with_header(client, info_holder):
     ],
 )
 def test_get_subtitles_explicit_lang(client, info_holder, args, expected):
-    result = call(client, "get_subtitles", url=VID, **args)
+    result = pick(client, "get_subtitles", url=VID, **args)
     assert result["isError"] is False
     assert info_holder["fetched"] == [expected]
 
 
 def test_get_subtitles_formats_and_layouts(client, info_holder):
     info_holder["cues"] = 3
-    srt = text_of(call(client, "get_subtitles", url=VID, fmt="srt"))
+    srt = text_of(pick(client, "get_subtitles", url=VID, fmt="srt"))
     assert srt.startswith("1\n00:00:00,000 --> 00:00:00,001\nTitle: ") and "\n\n2\n00:00:00,000 --> " in srt
-    vtt = text_of(call(client, "get_subtitles", url=VID, fmt="vtt", include_header=False))
+    vtt = text_of(pick(client, "get_subtitles", url=VID, fmt="vtt", include_header=False))
     assert vtt.startswith("WEBVTT\n\n00:00:00.000 --> ")
-    sentences = text_of(call(client, "get_subtitles", url=VID, layout="sentences", include_header=False))
+    sentences = text_of(pick(client, "get_subtitles", url=VID, layout="sentences", include_header=False))
     assert sentences == "Line 0 from en manual.\nLine 1 from en manual.\nLine 2 from en manual.\n"
-    paragraphs = text_of(call(client, "get_subtitles", url=VID, include_header=False))
+    paragraphs = text_of(pick(client, "get_subtitles", url=VID, include_header=False))
     assert paragraphs == "Line 0 from en manual. Line 1 from en manual. Line 2 from en manual.\n"
-    bad = call(client, "get_subtitles", url=VID, fmt="docx")
+    bad = pick(client, "get_subtitles", url=VID, fmt="docx")
     assert bad["isError"] is True
 
 
 def test_get_subtitles_truncates_at_line_boundary(client, info_holder):
     info_holder["cues"] = 40
-    full = text_of(call(client, "get_subtitles", url=VID, layout="sentences"))
-    text = text_of(call(client, "get_subtitles", url=VID, layout="sentences", max_chars=300))
+    full = text_of(pick(client, "get_subtitles", url=VID, layout="sentences"))
+    text = text_of(pick(client, "get_subtitles", url=VID, layout="sentences", max_chars=300))
     kept, _, marker = text.rpartition("\n")
     assert len(kept) <= 300 and full.startswith(kept + "\n")
     assert marker == f"[truncated: {len(full) - len(kept)} more characters]"
-    assert text_of(call(client, "get_subtitles", url=VID, max_chars=10**6)) == text_of(call(client, "get_subtitles", url=VID))
+    assert text_of(pick(client, "get_subtitles", url=VID, max_chars=10**6)) == text_of(pick(client, "get_subtitles", url=VID))
 
 
 def link_query(download_url):
@@ -239,7 +261,7 @@ def link_query(download_url):
 def test_get_download_link_default_track_from_public_base_url(client, info_holder, monkeypatch):
     monkeypatch.setenv("PUBLIC_BASE_URL", "https://dukwoos-mac-mini.tailb8572b.ts.net/")
     monkeypatch.setenv("RENDER_EXTERNAL_URL", "https://ignored.onrender.com")
-    result = call(client, "get_download_link", url=f"https://www.youtube.com/watch?v={VID}&t=5")
+    result = pick(client, "get_download_link", url=f"https://www.youtube.com/watch?v={VID}&t=5")
     assert result["isError"] is False
     data = result["structuredContent"]
     assert data["download_url"] == (
@@ -258,26 +280,26 @@ def test_get_download_link_explicit_choice_encoding_and_filename(client, info_ho
     info_holder["info"] = make_info([Track("pt-BR", "Portugu\u00eas (Brasil)", False, "m-pt"),
                                      Track("en-orig", "English", True, "a-en-orig")])
     info_holder["info"].title = "Caf\u00e9 & Co: 100% <live>?"
-    data = call(client, "get_download_link", url=VID, lang="pt-BR", fmt="txt", layout="sentences",
+    data = pick(client, "get_download_link", url=VID, lang="pt-BR", fmt="txt", layout="sentences",
                 include_header=False)["structuredContent"]
     parts, q = link_query(data["download_url"])
     assert (parts.scheme, parts.netloc, parts.path) == ("https", "host.example", "/api/download")
     assert q == {"url": VID, "lang": "pt-BR", "auto": "false", "fmt": "txt", "layout": "sentences", "header": "0"}
     assert data["filename"] == "Caf\u00e9 & Co 100% live.pt-BR.txt"
 
-    data = call(client, "get_download_link", url=VID, lang="en", fmt="srt", layout="cues")["structuredContent"]
+    data = pick(client, "get_download_link", url=VID, lang="en", fmt="srt", layout="cues")["structuredContent"]
     _, q = link_query(data["download_url"])
     assert q == {"url": VID, "lang": "en-orig", "auto": "true", "fmt": "srt", "layout": "paragraphs", "header": "1"}
     assert data["track"] == {"lang": "en-orig", "name": "English", "auto": True}
     assert data["filename"] == "Caf\u00e9 & Co 100% live.en-orig.auto.srt"
 
-    missing = call(client, "get_download_link", url=VID, lang="ja")
+    missing = pick(client, "get_download_link", url=VID, lang="ja")
     assert missing["isError"] is True and "No subtitle track for language 'ja'" in text_of(missing)
 
 
 def test_get_download_link_url_is_served_by_rest_api(client, monkeypatch):
     monkeypatch.setenv("PUBLIC_BASE_URL", "https://host.example")
-    data = call(client, "get_download_link", url=VID, lang="ko", fmt="vtt")["structuredContent"]
+    data = pick(client, "get_download_link", url=VID, lang="ko", fmt="vtt")["structuredContent"]
     parts = urlsplit(data["download_url"])
     r = client.get(f"{parts.path}?{parts.query}")
     assert r.status_code == 200 and r.text.startswith("WEBVTT")
@@ -286,21 +308,21 @@ def test_get_download_link_url_is_served_by_rest_api(client, monkeypatch):
 
 @pytest.mark.parametrize("args", [{"fmt": "docx"}, {"layout": "words"}, {"url": "not a url"}])
 def test_get_download_link_rejects_bad_arguments(client, args):
-    result = call(client, "get_download_link", **{"url": VID, **args})
+    result = pick(client, "get_download_link", **{"url": VID, **args})
     assert result["isError"] is True
 
 
 def test_get_download_link_base_url_from_request(client, monkeypatch):
-    data = call(client, "get_download_link", url=VID)["structuredContent"]
+    data = pick(client, "get_download_link", url=VID)["structuredContent"]
     assert data["download_url"].startswith("http://testserver/api/download?url=")
     assert data["web_app_url"] == "http://testserver/" and "no login" in data["note"]
 
-    r = rpc(client, "tools/call", {"name": "get_download_link", "arguments": {"url": VID}},
+    r = rpc(client, "tools/call", {"name": "get_download_link", "arguments": {"url": VID, "user_confirmed": True}},
             headers={"X-Forwarded-Proto": "https", "Host": "dukwoos-mac-mini.tailb8572b.ts.net"})
     assert r.json()["result"]["structuredContent"]["web_app_url"] == "https://dukwoos-mac-mini.tailb8572b.ts.net/"
 
     monkeypatch.setenv("RENDER_EXTERNAL_URL", "https://yt.onrender.com")
-    data = call(client, "get_download_link", url=VID)["structuredContent"]
+    data = pick(client, "get_download_link", url=VID)["structuredContent"]
     assert data["web_app_url"] == "https://yt.onrender.com/"
 
 
@@ -309,9 +331,10 @@ def test_get_download_link_relative_without_any_base_url(info_holder):
     import anyio
     from mcp.server.mcpserver import Context
 
-    from app.mcp_server import UNCONFIGURED_NOTE, get_download_link
+    from app.mcp_server import UNCONFIGURED_NOTE, get_download_link, get_video_info
 
-    data = anyio.run(lambda: get_download_link(VID, Context(), fmt="srt"))
+    anyio.run(lambda: get_video_info(VID, Context()))
+    data = anyio.run(lambda: get_download_link(VID, Context(), user_confirmed=True, fmt="srt"))
     assert data["download_url"] == f"/api/download?url={VID}&lang=en&auto=false&fmt=srt&layout=paragraphs&header=1"
     assert data["web_app_url"] == "/" and data["note"] == UNCONFIGURED_NOTE
     assert "PUBLIC_BASE_URL" in data["note"] and info_holder["fetched"] == []
@@ -327,7 +350,7 @@ def test_get_download_link_relative_without_any_base_url(info_holder):
     ],
 )
 def test_tool_errors(client, tool, args, message):
-    result = call(client, tool, **args)
+    result = call(client, tool, **args) if tool == "get_video_info" else pick(client, tool, **args)
     assert result["isError"] is True and message in text_of(result)
 
 
@@ -348,7 +371,7 @@ def test_translated_429_message_surfaces(client, monkeypatch):
         raise youtube.YoutubeError(youtube.RATE_LIMITED_TRANSLATED)
 
     monkeypatch.setattr(youtube, "fetch_subtitle_text", rate_limited)
-    result = call(client, "get_subtitles", url=VID, lang="ko", auto=True)
+    result = pick(client, "get_subtitles", url=VID, lang="ko", auto=True)
     assert result["isError"] is True and "machine-translated captions (HTTP 429)" in text_of(result)
 
 
@@ -428,7 +451,7 @@ def test_read_subtitles_resource(client, info_holder):
     [contents] = body["result"]["contents"]
     assert contents["uri"] == f"subtitles://video/{VID}/en/false/txt/paragraphs"
     assert contents["mimeType"] == "text/plain"
-    assert contents["text"] == text_of(call(client, "get_subtitles", url=VID, lang="en", auto=False))
+    assert contents["text"] == text_of(pick(client, "get_subtitles", url=VID, lang="en", auto=False))
     assert contents["text"].startswith("Title: Never Gonna Give You Up\n")
 
     [contents] = read_resource(client, f"subtitles://video/{VID}/en-orig/true/srt/cues?header=0")["result"]["contents"]
@@ -460,7 +483,7 @@ def test_recent_resource_lists_cached_videos(client):
 
 
 def test_get_subtitles_attaches_resource_and_link(client, info_holder):
-    result = call(client, "get_subtitles", url=VID, lang="es")
+    result = pick(client, "get_subtitles", url=VID, lang="es")
     assert result["isError"] is False and "structuredContent" not in result
     text_block, embedded, link = result["content"]
     assert [b["type"] for b in result["content"]] == ["text", "resource", "resource_link"]
@@ -472,14 +495,14 @@ def test_get_subtitles_attaches_resource_and_link(client, info_holder):
     # The attached URI reads back the same text.
     assert read_resource(client, uri)["result"]["contents"][0]["text"] == text_block["text"]
 
-    srt = call(client, "get_subtitles", url=VID, fmt="srt", layout="sentences", include_header=False)["content"]
+    srt = pick(client, "get_subtitles", url=VID, fmt="srt", layout="sentences", include_header=False)["content"]
     assert srt[1]["resource"]["uri"] == f"subtitles://video/{VID}/en/false/srt/cues?header=0"
     assert srt[1]["resource"]["mimeType"] == srt[2]["mimeType"] == "application/x-subrip"
     assert srt[2]["name"] == "Never Gonna Give You Up.en.srt"
 
-    plain = call(client, "get_subtitles", url=VID, attach=False)
+    plain = pick(client, "get_subtitles", url=VID, attach=False)
     assert [b["type"] for b in plain["content"]] == ["text"]
-    assert plain["content"][0]["text"] == call(client, "get_subtitles", url=VID)["content"][0]["text"]
+    assert plain["content"][0]["text"] == pick(client, "get_subtitles", url=VID)["content"][0]["text"]
 
 
 # MCP App: get_video_info shows the menu through its ui:// view.
@@ -672,3 +695,71 @@ def test_get_video_info_errors_for_apps_client(client, info_holder, url, message
     info_holder["info"] = make_info(tracks=[])
     result = menu_call(client, APPS_CAPABILITY, url=url)
     assert result["isError"] is True and message in text_of(result)
+
+
+# The server enforces the flow: user_confirmed=true, and get_video_info for the video in the same session.
+
+@pytest.mark.parametrize("tool", ["get_subtitles", "get_download_link"])
+def test_gated_tool_requires_user_confirmed_first(client, info_holder, tool):
+    call(client, "get_video_info", url=VID)
+    for args in ({}, {"user_confirmed": False}):
+        result = call(client, tool, url=VID, **args)
+        assert result["isError"] is True and text_of(result) == f"Error executing tool {tool}: " + (
+            "The user has not chosen yet. Call get_video_info first (it shows the subtitle menu), ask the user what "
+            "they want (step 1: download file, summary, translation or key points; step 2, for downloads: which "
+            "track and which format), then call this tool again with user_confirmed=true."
+        )
+    # user_confirmed is checked before the session gate.
+    other = call(client, tool, headers=open_session(client), url=VID)
+    assert other["isError"] is True and NOT_CONFIRMED in text_of(other)
+    assert info_holder["fetched"] == []
+
+
+@pytest.mark.parametrize("tool", ["get_subtitles", "get_download_link"])
+def test_gated_tool_requires_get_video_info_in_session(client, info_holder, tool):
+    result = call(client, tool, url=VID, user_confirmed=True)
+    assert result["isError"] is True and text_of(result).endswith(": " + NOT_LOOKED_UP)
+    # A lookup of another video does not open this one.
+    other_id = "abcdefghijk"
+    info_holder["info"] = make_info()
+    info_holder["info"].video_id = other_id
+    assert call(client, "get_video_info", url=other_id)["isError"] is False
+    info_holder["info"] = make_info()
+    assert text_of(call(client, tool, url=VID, user_confirmed=True)).endswith(": " + NOT_LOOKED_UP)
+    assert info_holder["fetched"] == []
+
+
+@pytest.mark.parametrize("tool", ["get_subtitles", "get_download_link"])
+def test_gated_tool_runs_after_get_video_info_and_confirmation(client, info_holder, tool):
+    assert call(client, "get_video_info", url=f"https://youtu.be/{VID}")["isError"] is False
+    # Any URL form of the same video passes.
+    result = call(client, tool, url=f"https://www.youtube.com/watch?v={VID}", user_confirmed=True)
+    assert result["isError"] is False
+    assert info_holder["fetched"] == ([("en", False)] if tool == "get_subtitles" else [])
+
+
+@pytest.mark.parametrize("tool", ["get_subtitles", "get_download_link"])
+def test_gate_is_per_session(client, tool):
+    assert call(client, "get_video_info", url=VID)["isError"] is False
+    assert call(client, tool, url=VID, user_confirmed=True)["isError"] is False
+    second = open_session(client, APPS_CAPABILITY)
+    result = call(client, tool, headers=second, url=VID, user_confirmed=True)
+    assert result["isError"] is True and text_of(result).endswith(": " + NOT_LOOKED_UP)
+    assert call(client, "get_video_info", headers=second, url=VID)["isError"] is False
+    assert call(client, tool, headers=second, url=VID, user_confirmed=True)["isError"] is False
+
+
+def test_gate_entry_dropped_when_session_ends(client):
+    from app.mcp_server import _looked_up
+
+    session = open_session(client)
+    key = "http:" + session["Mcp-Session-Id"]
+    assert call(client, "get_video_info", headers=session, url=VID)["isError"] is False
+    assert list(_looked_up[key]) == [VID]
+    assert client.delete("/mcp", headers={**HEADERS, **session}).status_code == 200
+    assert key not in _looked_up
+
+
+def test_gate_does_not_affect_resources(client):
+    [contents] = read_resource(client, f"subtitles://video/{VID}/en/false/txt/paragraphs")["result"]["contents"]
+    assert contents["text"].startswith("Title: Never Gonna Give You Up\n")
