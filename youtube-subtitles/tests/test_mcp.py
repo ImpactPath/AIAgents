@@ -1,5 +1,6 @@
 """MCP endpoint tests: raw JSON-RPC over streamable HTTP (stateless, JSON responses), yt-dlp mocked."""
 
+import json
 from urllib.parse import parse_qs, urlsplit
 
 import pytest
@@ -102,6 +103,7 @@ def test_initialize_and_tools_list(client):
     assert props["layout"]["enum"] == ["paragraphs", "sentences", "cues"]
     assert props["max_chars"]["default"] == 200000 and props["include_header"]["default"] is True
     assert "rate-limited" in subs_tool["description"] and not subs_tool["description"].startswith(" ")
+    assert props["attach"]["default"] is True and "attaches the file as a resource" in subs_tool["description"]
     assert {"options", "menu_hint"} <= set(info_tool["outputSchema"]["required"])
     link_tool = tools["get_download_link"]
     link_props = link_tool["inputSchema"]["properties"]
@@ -355,3 +357,89 @@ def test_app_can_start_twice(info_holder):
     for _ in range(2):
         with TestClient(app) as c:
             assert rpc(c, "tools/list").status_code == 200
+
+
+def test_resources_listed_and_templates(client):
+    r = rpc(client, "initialize", {
+        "protocolVersion": "2025-06-18", "capabilities": {}, "clientInfo": {"name": "pytest", "version": "1"},
+    })
+    result = r.json()["result"]
+    assert "resources" in result["capabilities"]
+    assert "attaches the file as a resource" in result["instructions"]
+
+    templates = rpc(client, "resources/templates/list").json()["result"]["resourceTemplates"]
+    by_uri = {t["uriTemplate"]: t for t in templates}
+    assert set(by_uri) == {
+        f"subtitles://video/{{video_id}}/{{lang}}/{{auto}}/{fmt}/{{layout}}{{?header}}" for fmt in ("txt", "srt", "vtt")
+    }
+    assert by_uri["subtitles://video/{video_id}/{lang}/{auto}/txt/{layout}{?header}"]["mimeType"] == "text/plain"
+    assert by_uri["subtitles://video/{video_id}/{lang}/{auto}/srt/{layout}{?header}"]["mimeType"] == "application/x-subrip"
+    assert by_uri["subtitles://video/{video_id}/{lang}/{auto}/vtt/{layout}{?header}"]["mimeType"] == "text/vtt"
+
+    resources = rpc(client, "resources/list").json()["result"]["resources"]
+    assert [(x["uri"], x["mimeType"]) for x in resources] == [("subtitles://recent", "application/json")]
+
+
+def read_resource(client, uri):
+    r = rpc(client, "resources/read", {"uri": uri})
+    assert r.status_code == 200, r.text
+    return r.json()
+
+
+def test_read_subtitles_resource(client, info_holder):
+    body = read_resource(client, f"subtitles://video/{VID}/en/false/txt/paragraphs")
+    [contents] = body["result"]["contents"]
+    assert contents["uri"] == f"subtitles://video/{VID}/en/false/txt/paragraphs"
+    assert contents["mimeType"] == "text/plain"
+    assert contents["text"] == text_of(call(client, "get_subtitles", url=VID, lang="en", auto=False))
+    assert contents["text"].startswith("Title: Never Gonna Give You Up\n")
+
+    [contents] = read_resource(client, f"subtitles://video/{VID}/en-orig/true/srt/cues?header=0")["result"]["contents"]
+    assert contents["mimeType"] == "application/x-subrip"
+    assert contents["text"].startswith("1\n00:00:00,000 --> 00:00:00,900\nLine 0 from en-orig auto.")
+    [contents] = read_resource(client, f"subtitles://video/{VID}/ko/false/vtt/cues")["result"]["contents"]
+    assert contents["mimeType"] == "text/vtt" and contents["text"].startswith("WEBVTT")
+    assert info_holder["fetched"][-2:] == [("en-orig", True), ("ko", False)]
+
+    for uri in (f"subtitles://video/{VID}/ja/false/txt/paragraphs", f"subtitles://video/{VID}/en/maybe/txt/paragraphs",
+                f"subtitles://video/{VID}/en/false/txt/words"):
+        assert "error" in read_resource(client, uri), uri
+
+
+def test_recent_resource_lists_cached_videos(client):
+    youtube.clear_cache()
+    empty = read_resource(client, "subtitles://recent")["result"]["contents"][0]
+    assert empty["mimeType"] == "application/json" and json.loads(empty["text"]) == {"videos": []}
+    youtube._cache_put(VID, make_info())
+    try:
+        data = json.loads(read_resource(client, "subtitles://recent")["result"]["contents"][0]["text"])
+    finally:
+        youtube.clear_cache()
+    assert data["videos"] == [{
+        "video_id": VID, "title": "Never Gonna Give You Up", "channel": "Rick Astley",
+        "url": f"https://www.youtube.com/watch?v={VID}",
+        "subtitles_uri": f"subtitles://video/{VID}/en/false/txt/paragraphs",
+    }]
+
+
+def test_get_subtitles_attaches_resource_and_link(client, info_holder):
+    result = call(client, "get_subtitles", url=VID, lang="es")
+    assert result["isError"] is False and "structuredContent" not in result
+    text_block, embedded, link = result["content"]
+    assert [b["type"] for b in result["content"]] == ["text", "resource", "resource_link"]
+    uri = f"subtitles://video/{VID}/es-orig/true/txt/paragraphs"
+    assert embedded["resource"] == {"uri": uri, "mimeType": "text/plain", "text": text_block["text"]}
+    assert link["uri"] == uri and link["mimeType"] == "text/plain"
+    assert link["name"] == "Never Gonna Give You Up.es-orig.auto.txt"
+    assert link["size"] == len(text_block["text"].encode("utf-8"))
+    # The attached URI reads back the same text.
+    assert read_resource(client, uri)["result"]["contents"][0]["text"] == text_block["text"]
+
+    srt = call(client, "get_subtitles", url=VID, fmt="srt", layout="sentences", include_header=False)["content"]
+    assert srt[1]["resource"]["uri"] == f"subtitles://video/{VID}/en/false/srt/cues?header=0"
+    assert srt[1]["resource"]["mimeType"] == srt[2]["mimeType"] == "application/x-subrip"
+    assert srt[2]["name"] == "Never Gonna Give You Up.en.srt"
+
+    plain = call(client, "get_subtitles", url=VID, attach=False)
+    assert [b["type"] for b in plain["content"]] == ["text"]
+    assert plain["content"][0]["text"] == call(client, "get_subtitles", url=VID)["content"][0]["text"]

@@ -86,6 +86,11 @@ fetching the subtitles; it uses `PUBLIC_BASE_URL`, else `RENDER_EXTERNAL_URL`, e
 When you paste only a link, the model lists the tracks, formats, layouts and actions (download link,
 summary, translation, key points) and waits for your choice.
 
+`get_subtitles` also attaches the track as an embedded resource and a resource link named like the download
+file, so clients that support it show a file; pass `attach: false` for the text only.
+Tracks are readable as resources at `subtitles://video/{video_id}/{lang}/{auto}/{fmt}/{layout}{?header}` (for example
+`subtitles://video/dQw4w9WgXcQ/en/false/txt/paragraphs`), and `subtitles://recent` lists recently looked-up videos.
+
 Set `MCP_API_KEY` on the host, then use `https://<your-host>/mcp?key=<value>` as the URL (or send
 `Authorization: Bearer <value>` where the client supports custom headers).
 

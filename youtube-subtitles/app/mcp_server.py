@@ -2,20 +2,24 @@
 
 Mounted by app.main at /mcp (streamable HTTP, stateless, JSON responses), so
 Claude and ChatGPT connectors can call it. The tools reuse the same cached
-yt-dlp lookup, track rules, and converter as the REST API.
+yt-dlp lookup, track rules, and converter as the REST API. Subtitle tracks are
+also readable as resources (subtitles://...), and get_subtitles attaches the
+track as an embedded resource plus a resource link so clients can show a file.
 """
 
 from __future__ import annotations
 
 import inspect
+import json
 import os
 from typing import Literal
-from urllib.parse import urlencode
+from urllib.parse import quote, urlencode
 
 import anyio
 from mcp.server.mcpserver import Context, MCPServer
-from mcp.server.mcpserver.exceptions import ToolError
+from mcp.server.mcpserver.exceptions import ResourceError, ToolError
 from mcp.server.transport_security import TransportSecuritySettings
+from mcp.types import EmbeddedResource, ResourceLink, TextContent, TextResourceContents
 from starlette.applications import Starlette
 from typing_extensions import TypedDict  # pydantic needs this TypedDict on Python < 3.12
 
@@ -32,7 +36,8 @@ INSTRUCTIONS = (
     "paragraphs and summarize). To give the user a file, call get_download_link and show its download_url "
     "as a clickable link; it does not fetch the subtitles. Machine-translated YouTube captions are "
     "rate-limited and hidden; download the original language and translate the text yourself if another "
-    "language is needed."
+    "language is needed. get_subtitles also attaches the file as a resource; tell the user it is attached "
+    "if the client shows it."
 )
 
 MENU_HINT = (
@@ -58,6 +63,9 @@ UNCONFIGURED_NOTE = (
     "server's address; prefix it with the host the user opens the web app on."
 )
 READY_NOTE = "Open the link in a browser to save the file; the web app needs no login."
+MIME_TYPES = {"txt": "text/plain", "srt": "application/x-subrip", "vtt": "text/vtt"}
+URI_SCHEME = "subtitles://"
+TRACK_URI_PREFIX = URI_SCHEME + "video/"  # constant host: clients may lowercase a URI host, ids are case-sensitive
 
 server = MCPServer(
     name="youtube-subtitles",
@@ -196,6 +204,29 @@ def _base_url(ctx: Context | None) -> str:
     return f"{scheme}://{host}"
 
 
+async def _render(info: youtube.VideoInfo, track: youtube.Track, fmt: str, layout: str, include_header: bool) -> str:
+    """Download one track and convert it, as get_subtitles and the subtitles:// resources return it."""
+    try:
+        raw = await anyio.to_thread.run_sync(youtube.fetch_subtitle_text, track)
+    except youtube.YoutubeError as exc:
+        raise ToolError(f"Could not download subtitles: {exc}") from exc
+    header = info.header_meta(track) if include_header else None
+    body = convert(raw, fmt, layout, header=header)  # layout is ignored for srt/vtt
+    if not body.strip() or body.strip() == "WEBVTT":
+        raise ToolError("The subtitle track was empty or could not be parsed.")
+    return body
+
+
+def subtitles_uri(video_id: str, lang: str, auto: bool, fmt: str, layout: str, include_header: bool = True) -> str:
+    """Resource URI of one rendered track, e.g. subtitles://video/dQw4w9WgXcQ/en/false/txt/paragraphs.
+
+    The layout segment only matters for txt; srt and vtt always use "cues". "?header=0" drops the header.
+    """
+    layout = layout if fmt == "txt" else "cues"
+    uri = f"{TRACK_URI_PREFIX}{video_id}/{quote(lang, safe='')}/{'true' if auto else 'false'}/{fmt}/{layout}"
+    return uri if include_header else uri + "?header=0"
+
+
 def _truncate(text: str, max_chars: int) -> str:
     if len(text) <= max_chars:
         return text
@@ -244,7 +275,8 @@ async def get_subtitles(
     layout: Literal["paragraphs", "sentences", "cues"] = "paragraphs",
     include_header: bool = True,
     max_chars: int = 200000,
-) -> str:
+    attach: bool = True,
+) -> list[TextContent | EmbeddedResource | ResourceLink]:
     """Download the subtitles of a YouTube video as text.
 
     Call this only after the user picked what they want from the get_video_info menu, or when the
@@ -261,6 +293,10 @@ async def get_subtitles(
     `include_header` (default true): start with title, channel, duration, published date, URL and track.
     `max_chars` (default 200000): longer output is cut at a line boundary and ends with
     "[truncated: N more characters]".
+    `attach` (default true): after the text, also return the same text as an embedded resource and a
+    resource link (subtitles://video/<video_id>/<lang>/<auto>/<fmt>/<layout>) named like the download file,
+    so the client can show it as an attached file; false returns the text only.
+    get_subtitles also attaches the file as a resource; tell the user it is attached if the client shows it.
     Machine-translated auto captions (another language than the video's) are rate-limited by YouTube
     (HTTP 429); fetch the original language instead and translate the text yourself.
     """
@@ -268,15 +304,21 @@ async def get_subtitles(
         raise ToolError("max_chars must be a positive number.")
     info = await _load(url)
     track = _pick_track(info, (lang or "").strip() or None, auto)
-    try:
-        raw = await anyio.to_thread.run_sync(youtube.fetch_subtitle_text, track)
-    except youtube.YoutubeError as exc:
-        raise ToolError(f"Could not download subtitles: {exc}") from exc
-    header = info.header_meta(track) if include_header else None
-    body = convert(raw, fmt, layout, header=header)  # layout is ignored for srt/vtt
-    if not body.strip() or body.strip() == "WEBVTT":
-        raise ToolError("The subtitle track was empty or could not be parsed.")
-    return _truncate(body, max_chars)
+    text = _truncate(await _render(info, track, fmt, layout, include_header), max_chars)
+    content: list[TextContent | EmbeddedResource | ResourceLink] = [TextContent(type="text", text=text)]
+    if not attach:
+        return content
+    uri = subtitles_uri(info.video_id, track.lang, track.auto, fmt, layout, include_header)
+    mime_type = MIME_TYPES[fmt]
+    filename, _ = youtube.download_filename(info, track.lang, track.auto, fmt)
+    content.append(EmbeddedResource(
+        type="resource", resource=TextResourceContents(uri=uri, mime_type=mime_type, text=text),
+    ))
+    content.append(ResourceLink(
+        type="resource_link", name=filename, title=f"{info.title} ({track.name}, {fmt.upper()})", uri=uri,
+        description="Subtitle file", mime_type=mime_type, size=len(text.encode("utf-8")),
+    ))
+    return content
 
 
 async def get_download_link(
@@ -319,6 +361,70 @@ async def get_download_link(
     )
 
 
+def _flag(value: str, name: str) -> bool:
+    flag = {"true": True, "1": True, "auto": True, "false": False, "0": False, "manual": False}.get(value.lower())
+    if flag is None:
+        raise ResourceError(f"'{name}' must be true or false, not '{value}'.")
+    return flag
+
+
+async def _read_track(fmt: str, video_id: str, lang: str, auto: str, layout: str, header: str) -> str:
+    """Resolve and render one track for a subtitles:// resource read (exact lang and auto match)."""
+    auto_flag, header_flag = _flag(auto, "auto"), _flag(header, "header")
+    if fmt == "txt" and layout not in ("paragraphs", "sentences", "cues"):
+        raise ResourceError(f"Unknown layout '{layout}'; use paragraphs, sentences or cues.")
+    try:
+        info = await _load(video_id)
+        track = info.find_track(lang, auto_flag)
+        if not track:
+            kind = "auto-generated" if auto_flag else "manual"
+            raise ToolError(f"No {kind} subtitle track for language '{lang}'.")
+        return await _render(info, track, fmt, layout if fmt == "txt" else "paragraphs", header_flag)
+    except ToolError as exc:
+        raise ResourceError(str(exc)) from exc
+
+
+def _register_track_template(fmt: str) -> None:
+    async def read_subtitles(video_id: str, lang: str, auto: str, layout: str, header: str = "1") -> str:
+        return await _read_track(fmt, video_id, lang, auto, layout, header)
+
+    server.resource(
+        f"{TRACK_URI_PREFIX}{{video_id}}/{{lang}}/{{auto}}/{fmt}/{{layout}}{{?header}}",
+        name=f"subtitles_{fmt}",
+        title=f"YouTube subtitles ({fmt.upper()})",
+        description=(
+            f"One subtitle track as {fmt.upper()}, with the metadata header unless ?header=0. `auto` is true "
+            "for auto-generated captions, false for uploader subtitles. `layout` is paragraphs, sentences or "
+            "cues for txt; srt and vtt ignore it (get_subtitles uses cues)."
+        ),
+        mime_type=MIME_TYPES[fmt],
+    )(read_subtitles)
+
+
+def recent_videos() -> str:
+    """Videos looked up in the last 10 minutes, newest first, with the resource URI of the recommended track."""
+    videos = []
+    for info in youtube.cached_infos():
+        rec = youtube.recommended_track(info)
+        videos.append({
+            "video_id": info.video_id,
+            "title": info.title,
+            "channel": info.channel,
+            "url": info.webpage_url,
+            "subtitles_uri": subtitles_uri(info.video_id, rec.lang, rec.auto, "txt", "paragraphs") if rec else None,
+        })
+    return json.dumps({"videos": videos}, ensure_ascii=False, indent=2)
+
+
 _register(get_video_info, structured=True)
-_register(get_subtitles, structured=False)  # plain text; a structured copy would double the payload
+_register(get_subtitles, structured=False)  # content blocks; a structured copy would duplicate the payload again
 _register(get_download_link, structured=True)
+for _fmt in MIME_TYPES:
+    _register_track_template(_fmt)
+server.resource(
+    f"{URI_SCHEME}recent",
+    name="recent_videos",
+    title="Recently looked-up videos",
+    description=inspect.cleandoc(recent_videos.__doc__ or ""),
+    mime_type="application/json",
+)(recent_videos)

@@ -452,6 +452,13 @@ def _cache_get(video_id: str) -> VideoInfo | None:
         return None
 
 
+def cached_infos() -> list[VideoInfo]:
+    """Unexpired cached videos, most recently fetched first."""
+    now = time.monotonic()
+    with _cache_lock:
+        return [info for exp, info in reversed(list(_cache.values())) if exp > now]
+
+
 def _cache_put(video_id: str, info: VideoInfo) -> None:
     now = time.monotonic()
     with _cache_lock:
