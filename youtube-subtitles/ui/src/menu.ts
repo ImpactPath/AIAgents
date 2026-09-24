@@ -582,9 +582,12 @@ async function onAddToChat(): Promise<void> {
     if (result.isError) throw new Error(textOf(result) || L.error);
     const text = textOf(result);
     if (!text) throw new Error("get_subtitles returned no text.");
+    const fileName = fileSafeName(`${data.video.title}.${t.lang}${t.auto ? ".auto" : ""}.txt`, data.video.video_id, "txt");
     const message =
       `Here are the subtitles of '${data.video.title}' (${t.lang}) for reference in this conversation. ` +
       `Keep them in mind for my next questions; do not call get_subtitles again for this track. ` +
+      `If you can create files in this conversation, also save the text below, complete and unchanged, ` +
+      `as a file named '${fileName}' so it appears in this chat's files. ` +
       `Reply with a one-line confirmation in ${answerLanguage()}.\n\n${text}`;
     const res = await app.sendMessage({ role: "user", content: [{ type: "text", text: message }] });
     if (res?.isError) throw new Error("The host did not accept the message.");
