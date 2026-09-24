@@ -310,7 +310,7 @@ def dark_korean(browser, shots: Path) -> None:
     run.wait_for_method("ui/message")
     msg = next(m for m in run.log() if m.get("method") == "ui/message")
     text = msg["params"]["content"][0]["text"]
-    check(msg["params"]["role"] == "user" and "get_subtitles" in text and "summarize" in text and "Korean" in text,
+    check(msg["params"]["role"] == "user" and "get_subtitles" in text and "summarize" in text and "language the user has been writing in" in text,
           "Summarize sends ui/message role user")
     check("user_confirmed=true" in text, "Summarize prompt asks for user_confirmed=true")
     f.locator("#notice").wait_for(state="visible")
@@ -322,7 +322,7 @@ def dark_korean(browser, shots: Path) -> None:
     text = msg["params"]["content"][0]["text"]
     check(msg["params"]["role"] == "user" and "get_subtitles" in text and ".md" in text,
           "Summary report sends ui/message with get_subtitles and .md")
-    check("user_confirmed=true" in text and "Korean" in text and "not the transcript" in text,
+    check("user_confirmed=true" in text and "language the user has been writing in" in text and "not the transcript" in text,
           "Summary report prompt: user_confirmed, user's language, own writing")
 
     check(f.locator("#btn-addchat").inner_text().strip() == "채팅에 넣기", "Korean Add to chat label")
