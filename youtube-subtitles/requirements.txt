@@ -1,0 +1,7 @@
+fastapi>=0.110
+uvicorn[standard]>=0.29
+# yt-dlp changes often to keep up with YouTube; rebuild to pick up new releases.
+# [default] adds yt-dlp-ejs and friends, [deno] ships the JS runtime YouTube extraction now needs.
+yt-dlp[default,deno]>=2025.11.12
+httpx>=0.27
+pytest>=8
