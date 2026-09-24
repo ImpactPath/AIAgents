@@ -582,7 +582,7 @@ async function onAddToChat(): Promise<void> {
     if (result.isError) throw new Error(textOf(result) || L.error);
     const text = textOf(result);
     if (!text) throw new Error("get_subtitles returned no text.");
-    const fileName = fileSafeName(`${data.video.title}.${t.lang}${t.auto ? ".auto" : ""}.txt`, data.video.video_id, "txt");
+    const fileName = fileSafeName(`${data.video.title}_subtitle_${t.lang}${t.auto ? "_auto" : ""}.txt`, data.video.video_id, "txt");
     const message =
       `Here are the subtitles of '${data.video.title}' (${t.lang}) for reference in this conversation. ` +
       `Keep them in mind for my next questions; do not call get_subtitles again for this track. ` +
