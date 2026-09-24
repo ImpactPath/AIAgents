@@ -315,8 +315,9 @@ def dark_korean(browser, shots: Path) -> None:
     run.wait_for_method("ui/message")
     msg = next(m for m in run.log() if m.get("method") == "ui/message")
     text = msg["params"]["content"][0]["text"]
-    check(msg["params"]["role"] == "user" and "get_subtitles" in text and "summarize" in text and "language the user has been writing in" in text,
+    check(msg["params"]["role"] == "user" and "get_subtitles" in text and "write a summary" in text and "language the user has been writing in" in text,
           "Summarize sends ui/message role user")
+    check("5 to 8 bullet points" in text and "own words" in text, "Summarize prompt spells out the summary structure")
     check("user_confirmed=true" in text, "Summarize prompt asks for user_confirmed=true")
     f.locator("#notice").wait_for(state="visible")
 

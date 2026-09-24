@@ -531,12 +531,22 @@ function promptText(kind: string): string {
     );
   }
   const task: Record<string, string> = {
-    summarize: "summarize them",
-    translate: "translate them to Korean, in sections if long",
-    keypoints: "list the key points with timestamps if available",
+    summarize:
+      "write a summary: first an overview of 2 to 3 sentences (what the video is about and who it is for), " +
+      "then 5 to 8 bullet points that follow the order of the video, each giving one main argument with the " +
+      "speaker's reasoning or evidence, then one closing line with the single most important takeaway. Use " +
+      "your own words rather than transcript sentences, keep names, numbers, and product names exact, and " +
+      "do not add claims that are not in the subtitles",
+    translate:
+      "translate them to Korean faithfully and completely: keep every sentence, do not summarize or skip, " +
+      "work in sections of a few paragraphs if the text is long, and on first mention keep names and technical " +
+      "terms in the original language in parentheses",
+    keypoints:
+      "list the key points: 8 to 15 points in the order they appear, one sentence each, with a [mm:ss] " +
+      "timestamp when the subtitles carry one, grouped under short topic headings, followed by 3 takeaways",
   };
   const answer = kind === "translate" ? "" : ` Answer in ${answerLanguage()}.`;
-  return `${fetch} and ${task[kind]}.${answer}`;
+  return `${fetch}, ${task[kind]}.${answer}`;
 }
 
 async function onPrompt(button: HTMLButtonElement): Promise<void> {
