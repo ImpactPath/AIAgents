@@ -5,6 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>YouTube Subtitle Downloader</title>
     <meta name="description" content="Download YouTube subtitles as SRT, VTT, or plain text.">
+    <!-- Favicon: same "CC" mark as the header logo, inline so no extra file is needed -->
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2032%2032'%3E%3Crect%20width='32'%20height='32'%20rx='6.5'%20fill='%2309090b'/%3E%3Ctext%20x='16'%20y='22'%20text-anchor='middle'%20font-family='Arial,Helvetica,sans-serif'%20font-size='17'%20font-weight='700'%20letter-spacing='-1'%20fill='%23ffffff'%3ECC%3C/text%3E%3C/svg%3E">
+    <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
+    <meta name="theme-color" content="#09090b" media="(prefers-color-scheme: dark)">
     <script>
         // Apply the saved theme before first paint to avoid a flash of the wrong theme.
         try {
@@ -146,6 +150,8 @@
         .btn-lg { height: 2.5rem; }
         .btn-sm { height: 2rem; padding: 0 0.75rem; font-size: 0.75rem; }
         .btn-icon { height: 2rem; width: 2rem; padding: 0; }
+        .input-copy { color: hsl(var(--muted-foreground)); }
+        .input-copy:hover { color: hsl(var(--accent-foreground)); }
 
         /* --- Tabs (used for EN/KO, Format and Text layout). Radio or aria-pressed driven. --- */
         .tabs { display: inline-flex; align-items: center; gap: 0.125rem; padding: 0.25rem; border-radius: calc(var(--radius) - 2px); background-color: hsl(var(--muted)); color: hsl(var(--muted-foreground)); }
@@ -283,9 +289,8 @@
 
     <main class="flex-1 w-full max-w-3xl mx-auto px-4">
         <!-- Hero -->
-        <section class="py-10 sm:py-14">
+        <section class="pt-10 pb-6 sm:pt-14 sm:pb-8">
             <h1 class="text-3xl sm:text-4xl font-semibold tracking-tight" data-i18n="title">YouTube Subtitle Downloader</h1>
-            <p class="text-muted-foreground text-base sm:text-lg mt-3 max-w-xl" data-i18n="subtitle">Paste a YouTube link and download its subtitles as SRT, VTT, or plain text.</p>
         </section>
 
         <div>
@@ -293,10 +298,17 @@
             <form id="fetch-form" class="rounded-xl border border-border bg-card text-card-foreground shadow-sm p-6" novalidate>
                 <label for="url-input" class="block text-sm font-medium leading-none mb-2.5" data-i18n="urlLabel">YouTube URL or video ID</label>
                 <div class="flex flex-col sm:flex-row gap-2">
-                    <input id="url-input" name="url" type="text" inputmode="url" autocomplete="off" autocapitalize="off" spellcheck="false"
-                        class="field h-10 px-3 sm:flex-1 min-w-0"
-                        placeholder="https://www.youtube.com/watch?v=..."
-                        aria-describedby="url-error">
+                    <div class="relative sm:flex-1 min-w-0">
+                        <input id="url-input" name="url" type="text" inputmode="url" autocomplete="off" autocapitalize="off" spellcheck="false"
+                            class="field h-10 pl-3 pr-10 min-w-0"
+                            placeholder="https://www.youtube.com/watch?v=..."
+                            aria-describedby="url-error">
+                        <!-- Copy the link in the input (type="button" so Enter still submits the form) -->
+                        <button id="url-copy-btn" type="button" class="btn btn-ghost btn-icon input-copy absolute right-1 top-1" data-i18n-aria-label="copyLink" aria-label="Copy link" data-i18n-title="copyLink" title="Copy link" disabled>
+                            <svg id="url-copy-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true"><rect x="9" y="9" width="12" height="12" rx="2" stroke-width="2"></rect><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                            <svg id="url-copied-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true" style="display:none"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 6 9 17l-5-5"></path></svg>
+                        </button>
+                    </div>
                     <button id="fetch-btn" type="submit" class="btn btn-default btn-lg px-4">
                         <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true"><circle cx="11" cy="11" r="7" stroke-width="2"></circle><path stroke-linecap="round" stroke-width="2" d="m20 20-3.5-3.5"></path></svg>
                         <span data-i18n="fetchBtn">Fetch subtitles</span>
@@ -492,7 +504,6 @@
             en: {
                 pageTitle: 'YouTube Subtitle Downloader',
                 title: 'YouTube Subtitle Downloader',
-                subtitle: 'Paste a YouTube link and download its subtitles as SRT, VTT, or plain text.',
                 urlLabel: 'YouTube URL or video ID',
                 fetchBtn: 'Fetch subtitles',
                 loading: 'Looking up subtitles...',
@@ -534,6 +545,8 @@
                 copied: 'Copied',
                 copyFailed: 'Copy failed',
                 copyTitle: 'Copies the full subtitle text',
+                copyLink: 'Copy link',
+                linkCopied: 'Link copied',
                 foundTracks: 'Found {n} subtitle tracks.',
                 previewReady: 'Preview loaded.',
                 downloadStarted: 'Download started.',
@@ -543,7 +556,6 @@
             ko: {
                 pageTitle: '유튜브 자막 다운로더',
                 title: '유튜브 자막 다운로더',
-                subtitle: '유튜브 링크를 붙여 넣으면 자막을 SRT, VTT 또는 텍스트 파일로 받을 수 있습니다.',
                 urlLabel: '유튜브 URL 또는 동영상 ID',
                 fetchBtn: '자막 불러오기',
                 loading: '자막을 찾는 중...',
@@ -585,6 +597,8 @@
                 copied: '복사됨',
                 copyFailed: '복사 실패',
                 copyTitle: '자막 전체를 복사합니다',
+                copyLink: '링크 복사',
+                linkCopied: '링크를 복사했습니다',
                 foundTracks: '자막 트랙 {n}개를 찾았습니다.',
                 previewReady: '미리 보기를 불러왔습니다.',
                 downloadStarted: '다운로드를 시작했습니다.',
@@ -1188,7 +1202,34 @@
 
         // ---------------- Form wiring ----------------
         els.form.addEventListener('submit', (e) => { e.preventDefault(); fetchInfo(); });
-        els.input.addEventListener('input', () => { if (state.urlErrorKey) clearUrlError(); });
+        els.input.addEventListener('input', () => { if (state.urlErrorKey) clearUrlError(); syncUrlCopy(); });
+
+        // ---------------- Copy link (button inside the URL input) ----------------
+        const urlCopyBtn = $('url-copy-btn');
+        const urlCopyIcon = $('url-copy-icon');
+        const urlCopiedIcon = $('url-copied-icon');
+        let urlCopyTimer = null;
+        function syncUrlCopy() { urlCopyBtn.disabled = !els.input.value.trim(); }
+        function showUrlCopied(on) {
+            urlCopyIcon.style.display = on ? 'none' : '';
+            urlCopiedIcon.style.display = on ? '' : 'none';
+            urlCopyBtn.dataset.copied = String(on);
+        }
+        urlCopyBtn.addEventListener('click', async () => {
+            const text = els.input.value.trim();
+            if (!text) return;
+            let ok = false;
+            if (navigator.clipboard && window.isSecureContext) {
+                try { await navigator.clipboard.writeText(text); ok = true; } catch (e) { ok = false; }
+            }
+            if (!ok) { ok = legacyCopy(text); urlCopyBtn.focus(); } // plain-HTTP deployments have no async clipboard
+            if (!ok) { announce(t('copyFailed')); return; }
+            showUrlCopied(true);
+            announce(t('linkCopied'));
+            clearTimeout(urlCopyTimer);
+            urlCopyTimer = setTimeout(() => showUrlCopied(false), 1500);
+        });
+        els.input.addEventListener('paste', () => { setTimeout(syncUrlCopy, 0); });
         els.input.addEventListener('paste', () => {
             // Wait for the pasted text to land in the input, then auto-fetch if it is a YouTube link.
             setTimeout(() => {
@@ -1200,6 +1241,7 @@
         // ---------------- Init ----------------
         setTheme(els.html.dataset.theme === 'dark' ? 'dark' : 'light');
         setLayout(storageGet(LAYOUT_KEY));
+        syncUrlCopy();
         syncLayoutGroup();
         applyLang(storageGet('yts_lang') || 'en');
     })();
