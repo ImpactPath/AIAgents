@@ -47,7 +47,7 @@ const FALLBACK: Record<"en" | "ko", Labels> = {
     error: "Something went wrong", sent: "Sent to the chat", sending: "Sending...",
     copyHint: "Copy is blocked here. The text is selected: press Ctrl+C (Cmd+C on Mac).",
     noLink: "The server did not provide a download link.", dismiss: "Dismiss", noTracks: "This video has no downloadable subtitles.",
-    report: "Summary report (.md)", addToChat: "Add to chat", addedToChat: "Subtitles added to the chat context.",
+    report: "Summary report (.md)", addToChat: "Add to chat", addedToChat: "Subtitles placed in the message box. Press send to add them to the chat.",
     expand: "Expand", collapse: "Back to chat size",
   },
   ko: {
@@ -60,7 +60,7 @@ const FALLBACK: Record<"en" | "ko", Labels> = {
     error: "오류가 발생했습니다", sent: "채팅에 요청을 보냈습니다", sending: "보내는 중...",
     copyHint: "여기서는 복사가 막혀 있습니다. 텍스트가 선택되어 있으니 Ctrl+C (Mac은 Cmd+C)를 누르세요.",
     noLink: "서버가 다운로드 링크를 제공하지 않았습니다.", dismiss: "닫기", noTracks: "이 영상에는 내려받을 수 있는 자막이 없습니다.",
-    report: "요약 보고서 (.md)", addToChat: "채팅에 넣기", addedToChat: "자막을 채팅 맥락에 넣었습니다.",
+    report: "요약 보고서 (.md)", addToChat: "채팅에 넣기", addedToChat: "자막을 입력창에 넣었습니다. 전송을 누르면 채팅에 추가됩니다.",
     expand: "크게 보기", collapse: "채팅 크기로",
   },
 };
@@ -556,6 +556,8 @@ async function onPrompt(button: HTMLButtonElement): Promise<void> {
 // Fetch the whole track as TXT paragraphs and put it in the model's context, so later questions in the
 // conversation can use it without another tool call. Hosts without updateModelContext get a user message.
 async function onAddToChat(): Promise<void> {
+  // The transcript goes into the composer as a user message. Claude Desktop accepts ui/update-model-context
+  // but the model did not see content sent that way, so the message is the one path that verifiably works.
   const t = currentTrack();
   if (!t || !data) return;
   const button = $<HTMLButtonElement>("btn-addchat");
@@ -569,13 +571,12 @@ async function onAddToChat(): Promise<void> {
     if (result.isError) throw new Error(textOf(result) || L.error);
     const text = textOf(result);
     if (!text) throw new Error("get_subtitles returned no text.");
-    if (app.getHostCapabilities()?.updateModelContext) {
-      await app.updateModelContext({ content: [{ type: "text", text }] });
-    } else {
-      const message = `Here are the subtitles of '${data.video.title}' (${t.lang}) for reference in this conversation:\n\n${text}`;
-      const res = await app.sendMessage({ role: "user", content: [{ type: "text", text: message }] });
-      if (res?.isError) throw new Error("The host did not accept the message.");
-    }
+    const message =
+      `Here are the subtitles of '${data.video.title}' (${t.lang}) for reference in this conversation. ` +
+      `Keep them in mind for my next questions; do not call get_subtitles again for this track. ` +
+      `Reply with a one-line confirmation in ${answerLanguage()}.\n\n${text}`;
+    const res = await app.sendMessage({ role: "user", content: [{ type: "text", text: message }] });
+    if (res?.isError) throw new Error("The host did not accept the message.");
     showNotice(L.addedToChat);
   } catch (err) {
     showError(`${L.error}: ${errorMessage(err)}`);

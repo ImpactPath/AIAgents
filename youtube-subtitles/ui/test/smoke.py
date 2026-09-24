@@ -35,7 +35,7 @@ def label_sets() -> dict:
         "selected": "Selected", "downloading": "Preparing file...",
         "downloadReady": "If the download did not start, open this link:", "loading": "Loading...",
         "error": "Something went wrong", "report": "Summary report (.md)", "addToChat": "Add to chat",
-        "addedToChat": "Subtitles added to the chat context.",
+        "addedToChat": "Subtitles placed in the message box. Press send to add them to the chat.",
     }
     ko = {
         "subtitles": "자막", "format": "파일 형식", "layout": "텍스트 줄 정돈", "paragraphs": "문단",
@@ -44,7 +44,7 @@ def label_sets() -> dict:
         "copy": "복사", "copied": "복사됨", "openWeb": "웹앱 열기", "selected": "선택됨",
         "downloading": "파일 준비 중...", "downloadReady": "다운로드가 시작되지 않으면 이 링크를 여세요:",
         "loading": "불러오는 중...", "error": "오류가 발생했습니다", "report": "요약 보고서 (.md)",
-        "addToChat": "채팅에 넣기", "addedToChat": "자막을 채팅 맥락에 넣었습니다.",
+        "addToChat": "채팅에 넣기", "addedToChat": "자막을 입력창에 넣었습니다. 전송을 누르면 채팅에 추가됩니다.",
     }
     return {"en": en, "ko": ko}
 
@@ -180,6 +180,8 @@ def js_literal(value) -> str:
     """JSON for embedding inside an inline <script> (no premature </script>)."""
     return json.dumps(value).replace("</", "<\\/")
 
+
+SUB_TEXT_TAIL = "Second, data systems matter more than slogans."
 
 HOST_CAPS = {"openLinks": {}, "downloadFile": {}, "serverTools": {}, "message": {}, "updateModelContext": {"text": {}}}
 
@@ -331,19 +333,22 @@ def dark_korean(browser, shots: Path) -> None:
     check(f.locator("#btn-addchat").inner_text().strip() == "채팅에 넣기", "Korean Add to chat label")
     calls_before = len([m for m in run.log() if m.get("method") == "tools/call"])
     f.locator("#btn-addchat").click()
-    run.wait_for_method("ui/update-model-context")
+    run.wait_for_method("ui/message", 3)
     calls = [m for m in run.log() if m.get("method") == "tools/call"]
     check(len(calls) == calls_before + 1, "Add to chat makes one tools/call")
     a = calls[-1]["params"]["arguments"]
     check(calls[-1]["params"]["name"] == "get_subtitles" and a["user_confirmed"] is True and a["attach"] is False
           and a["max_chars"] == 200000 and (a["fmt"], a["layout"]) == ("txt", "paragraphs"),
           "Add to chat calls get_subtitles as TXT paragraphs with user_confirmed true")
-    seq = [m for m in run.methods() if m in ("tools/call", "ui/update-model-context")]
-    check(seq[-2:] == ["tools/call", "ui/update-model-context"], "Add to chat: tools/call then ui/update-model-context")
-    ctx = next(m for m in run.log() if m.get("method") == "ui/update-model-context")
-    check(ctx["params"]["content"][0]["text"].startswith("Green growth"), "model context carries the subtitle text")
-    check(len([m for m in run.log() if m.get("method") == "ui/message"]) == 2, "Add to chat sends no ui/message")
-    f.locator("#notice").get_by_text("자막을 채팅 맥락에 넣었습니다.").wait_for(state="visible")
+    seq = [m for m in run.methods() if m in ("tools/call", "ui/message")]
+    check(seq[-2:] == ["tools/call", "ui/message"], "Add to chat: tools/call then ui/message")
+    check("ui/update-model-context" not in run.methods(), "Add to chat does not rely on ui/update-model-context")
+    msg = [m for m in run.log() if m.get("method") == "ui/message"][-1]
+    text = msg["params"]["content"][0]["text"]
+    check(msg["params"]["role"] == "user" and text.startswith(f"Here are the subtitles of '{TITLE}' (en)")
+          and "do not call get_subtitles again" in text and text.endswith(SUB_TEXT_TAIL),
+          "Add to chat sends the transcript as a user message")
+    f.locator("#notice").get_by_text("자막을 입력창에 넣었습니다. 전송을 누르면 채팅에 추가됩니다.").wait_for(state="visible")
     passed.append("Add to chat shows the Korean confirmation")
     check(not run.errors, "no console errors (dark, ko-KR)")
     page.close()
@@ -373,22 +378,20 @@ def light_english(browser, shots: Path) -> None:
     page.close()
 
 
-def add_to_chat_fallback(browser) -> None:
+def add_to_chat_without_context_capability(browser) -> None:
     page = browser.new_page()
     caps = {k: v for k, v in HOST_CAPS.items() if k != "updateModelContext"}
     run = Run(page, "light", "en-US", 400, caps=caps)
     f = run.frame
     f.locator("#btn-addchat").click()
     run.wait_for_method("ui/message")
-    check("ui/update-model-context" not in run.methods(), "no ui/update-model-context without the capability")
     msg = next(m for m in run.log() if m.get("method") == "ui/message")
     text = msg["params"]["content"][0]["text"]
-    check(msg["params"]["role"] == "user"
-          and text.startswith(f"Here are the subtitles of '{TITLE}' (en) for reference in this conversation:\n\nGreen growth"),
-          "Add to chat falls back to ui/message with the subtitle text")
-    f.locator("#notice").get_by_text("Subtitles added to the chat context.").wait_for(state="visible")
-    passed.append("Add to chat fallback shows the confirmation")
-    check(not run.errors, "no console errors (Add to chat fallback)")
+    check(msg["params"]["role"] == "user" and text.startswith(f"Here are the subtitles of '{TITLE}' (en)")
+          and text.endswith(SUB_TEXT_TAIL), "Add to chat works without the updateModelContext capability")
+    f.locator("#notice").get_by_text("Subtitles placed in the message box.").wait_for(state="visible")
+    passed.append("Add to chat shows the English confirmation")
+    check(not run.errors, "no console errors (Add to chat without updateModelContext)")
     page.close()
 
 
@@ -454,7 +457,7 @@ def main() -> None:
         try:
             dark_korean(browser, shots)
             light_english(browser, shots)
-            add_to_chat_fallback(browser)
+            add_to_chat_without_context_capability(browser)
             narrow(browser, shots)
             display_modes(browser, shots)
             tool_error(browser)

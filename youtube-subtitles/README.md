@@ -103,7 +103,7 @@ after changing the view sources in `ui/`, rebuild it with `cd ui && npm install 
 (Node 22). If the file is missing, the server logs a warning and serves a placeholder page.
 
 - **Summary report (.md)** asks Claude to fetch the subtitles and write its own structured summary (overview, key arguments, paraphrased quotes, timeline, takeaways) as a downloadable Markdown file named after the video, plus a three-line summary in the chat.
-- **Add to chat** fetches the selected track as TXT paragraphs and puts it in the model's context (`ui/update-model-context`, or a user message on hosts without it), so later questions can use it without another tool call.
+- **Add to chat** fetches the selected track as TXT paragraphs and places it in the chat composer as a user message (`ui/message`) with a short instruction; the user presses send, and later questions use the transcript without another tool call. Claude Desktop accepts `ui/update-model-context` but the model did not see content sent that way, so the app does not use it.
 - The prompt buttons (Summarize, Translate, Key points, Summary report) fill the chat composer; the user sends the message and Claude then calls `get_subtitles`. The server answers that call from its 10-minute caption cache, so YouTube is not contacted again for a track already previewed or downloaded.
 - An expand button appears in the header only on hosts that list `fullscreen` in `availableDisplayModes`; it toggles between the inline card and the host's full-screen view. The menu is an MCP App rendered by the host and cannot be turned into a Claude artifact.
 
