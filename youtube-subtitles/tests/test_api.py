@@ -209,7 +209,7 @@ def test_fetch_info_is_cached(monkeypatch):
     [
         ("srt", "application/x-subrip; charset=utf-8", "1\n00:00:01,000 --> 00:00:02,000\nHello there\n"),
         ("vtt", "text/vtt; charset=utf-8", "WEBVTT\n\n00:00:01.000 --> 00:00:02.000\nHello there\n"),
-        ("txt", "text/plain; charset=utf-8", "Hello there\nGeneral Kenobi\n"),
+        ("txt", "text/plain; charset=utf-8", "Hello there General Kenobi\n"),
     ],
 )
 def test_download_formats(client, fmt, ctype, start):
@@ -221,6 +221,47 @@ def test_download_formats(client, fmt, ctype, start):
     assert cd.startswith("attachment; ")
     assert f'filename="Never Gonna Give You Up.en.{fmt}"' in cd
     assert f"filename*=UTF-8''Never%20Gonna%20Give%20You%20Up.en.{fmt}" in cd
+
+
+LAYOUT_VTT = (
+    "WEBVTT\n\n00:00:01.000 --> 00:00:02.000\nHello there.\n\n00:00:02.000 --> 00:00:03.000\nGeneral"
+    "\n\n00:00:03.000 --> 00:00:04.000\nKenobi. You are\n\n00:00:07.000 --> 00:00:08.000\na bold one.\n"
+)
+
+
+@pytest.mark.parametrize(
+    "layout,body",
+    [
+        (None, "Hello there. General Kenobi. You are a bold one.\n"),
+        ("paragraphs", "Hello there. General Kenobi. You are a bold one.\n"),
+        ("Sentences", "Hello there.\nGeneral Kenobi.\nYou are a bold one.\n"),
+        ("cues", "Hello there.\nGeneral\nKenobi. You are\na bold one.\n"),
+    ],
+)
+def test_download_txt_layouts(client, monkeypatch, layout, body):
+    monkeypatch.setattr(youtube, "fetch_subtitle_text", lambda track: LAYOUT_VTT)
+    params = {"url": URL, "lang": "en", "fmt": "txt"}
+    if layout:
+        params["layout"] = layout
+    r = client.get("/api/download", params=params)
+    assert r.status_code == 200 and r.text == body
+    assert r.headers["content-disposition"].endswith(".en.txt")
+
+
+@pytest.mark.parametrize("fmt", ["srt", "vtt"])
+def test_download_layout_ignored_for_srt_vtt(client, fmt):
+    base = {"url": URL, "lang": "en", "fmt": fmt}
+    plain = client.get("/api/download", params=base)
+    bogus = client.get("/api/download", params={**base, "layout": "bogus"})
+    assert plain.status_code == bogus.status_code == 200
+    assert plain.text == bogus.text
+
+
+def test_download_bad_layout_400(client):
+    r = client.get("/api/download", params={"url": URL, "lang": "en", "fmt": "txt", "layout": "bogus"})
+    assert r.status_code == 400
+    assert "layout" in r.json()["detail"] and "paragraphs" in r.json()["detail"]
+    assert client.calls["info"] == [] and client.calls["sub"] == []
 
 
 def test_download_defaults_and_auto_suffix(client):

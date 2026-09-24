@@ -16,7 +16,7 @@ from fastapi.staticfiles import StaticFiles
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from app import youtube
-from app.convert import FORMATS, convert
+from app.convert import FORMATS, LAYOUTS, convert
 
 STATIC_DIR = Path(__file__).resolve().parent.parent / "static"
 MEDIA_TYPES = {
@@ -94,11 +94,18 @@ async def api_info(url: str = "") -> dict:
 
 
 @app.get("/api/download")
-async def api_download(url: str = "", lang: str = "", auto: str = "false", fmt: str = "srt") -> Response:
+async def api_download(
+    url: str = "", lang: str = "", auto: str = "false", fmt: str = "srt", layout: str = LAYOUTS[0]
+) -> Response:
     video_id = _video_id(url)
     fmt = fmt.strip().lower()
     if fmt not in FORMATS:
         raise HTTPException(400, f"Unsupported format '{fmt}'. Use one of: {', '.join(FORMATS)}.")
+    layout = layout.strip().lower()
+    if fmt != "txt":
+        layout = LAYOUTS[0]  # layout only applies to TXT; ignore whatever was sent
+    elif layout not in LAYOUTS:
+        raise HTTPException(400, f"Unsupported layout '{layout}'. Use one of: {', '.join(LAYOUTS)}.")
     auto_flag = BOOL_VALUES.get(auto.strip().lower())
     if auto_flag is None:
         raise HTTPException(400, "Parameter 'auto' must be true, false, 1, or 0.")
@@ -115,7 +122,7 @@ async def api_download(url: str = "", lang: str = "", auto: str = "false", fmt: 
         raw = await run_in_threadpool(youtube.fetch_subtitle_text, track)
     except youtube.YoutubeError as exc:
         raise HTTPException(502, f"Could not download subtitles: {exc}") from exc
-    body = convert(raw, fmt)
+    body = convert(raw, fmt, layout)
     if not body.strip() or body.strip() == "WEBVTT":
         raise HTTPException(502, "The subtitle track was empty or could not be parsed.")
 

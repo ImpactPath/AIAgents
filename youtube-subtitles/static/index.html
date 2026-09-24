@@ -227,6 +227,13 @@
             padding: 0.0625rem 0.375rem; border-radius: 0.375rem;
             background-color: var(--tag-bg); color: var(--tag-text);
         }
+        /* Source tag on Recommended chips: outlined so it reads differently from the lang code badge. */
+        .chip-kind {
+            flex: none; font-size: 0.6875rem; font-weight: 600; letter-spacing: 0.02em;
+            padding: 0 0.375rem; border-radius: 0.375rem;
+            border: 1px solid var(--input-border); color: var(--text-tertiary);
+        }
+        .chip-input:checked + .chip-label .chip-kind { border-color: var(--btn2-border); color: var(--accent-color); }
 
         /* --- Segmented control --- */
         .seg { background-color: var(--seg-bg); }
@@ -236,6 +243,8 @@
             font-weight: 600; font-size: 0.875rem; letter-spacing: 0.03em;
             color: var(--text-secondary); cursor: pointer; transition: all 0.2s ease;
         }
+        .seg-label.seg-label-text { padding-left: 0.5rem; padding-right: 0.5rem; text-align: center; line-height: 1.2; letter-spacing: 0; }
+        @media (min-width: 640px) { .seg-label.seg-label-text { padding-left: 1rem; padding-right: 1rem; } }
         .seg-label:hover { color: var(--text-primary); }
         .seg-input:checked + .seg-label {
             background-color: var(--seg-active-bg); color: var(--accent-color);
@@ -360,6 +369,12 @@
                 <div class="border-t divider my-5"></div>
 
                 <!-- Track groups -->
+                <fieldset id="rec-group" class="mb-5" hidden>
+                    <legend class="text-sm font-semibold mb-2.5" data-i18n="recGroup">Recommended</legend>
+                    <div id="rec-chips" class="flex flex-wrap gap-2"></div>
+                    <p id="rec-order" class="t-3 text-xs mt-2"></p>
+                </fieldset>
+
                 <fieldset id="manual-group" class="mb-5">
                     <legend class="text-sm font-semibold mb-2.5" data-i18n="manualGroup">Manual subtitles</legend>
                     <div id="manual-chips" class="flex flex-wrap gap-2"></div>
@@ -382,14 +397,25 @@
 
                 <!-- Format + actions -->
                 <div class="flex flex-col sm:flex-row sm:items-end gap-4 sm:justify-between">
-                    <fieldset>
-                        <legend class="text-sm font-semibold mb-2.5" data-i18n="formatLabel">Format</legend>
-                        <div class="seg inline-flex w-full sm:w-auto p-1 rounded-xl gap-1">
-                            <div class="relative flex-1 sm:flex-none"><input class="seg-input sr-only" type="radio" name="fmt" id="fmt-srt" value="srt" checked><label class="seg-label" for="fmt-srt">SRT</label></div>
-                            <div class="relative flex-1 sm:flex-none"><input class="seg-input sr-only" type="radio" name="fmt" id="fmt-vtt" value="vtt"><label class="seg-label" for="fmt-vtt">VTT</label></div>
-                            <div class="relative flex-1 sm:flex-none"><input class="seg-input sr-only" type="radio" name="fmt" id="fmt-txt" value="txt"><label class="seg-label" for="fmt-txt">TXT</label></div>
-                        </div>
-                    </fieldset>
+                    <div class="flex flex-col gap-4 min-w-0">
+                        <fieldset>
+                            <legend class="text-sm font-semibold mb-2.5" data-i18n="formatLabel">Format</legend>
+                            <div class="seg inline-flex w-full sm:w-auto p-1 rounded-xl gap-1">
+                                <div class="relative flex-1 sm:flex-none"><input class="seg-input sr-only" type="radio" name="fmt" id="fmt-srt" value="srt" checked><label class="seg-label" for="fmt-srt">SRT</label></div>
+                                <div class="relative flex-1 sm:flex-none"><input class="seg-input sr-only" type="radio" name="fmt" id="fmt-vtt" value="vtt"><label class="seg-label" for="fmt-vtt">VTT</label></div>
+                                <div class="relative flex-1 sm:flex-none"><input class="seg-input sr-only" type="radio" name="fmt" id="fmt-txt" value="txt"><label class="seg-label" for="fmt-txt">TXT</label></div>
+                            </div>
+                        </fieldset>
+                        <!-- Text layout: only shown when TXT is the selected format -->
+                        <fieldset id="layout-group" hidden>
+                            <legend class="text-sm font-semibold mb-2.5" data-i18n="layoutLabel">Text layout</legend>
+                            <div class="seg inline-flex w-full sm:w-auto p-1 rounded-xl gap-1">
+                                <div class="relative flex-1 sm:flex-none"><input class="seg-input sr-only" type="radio" name="layout" id="layout-paragraphs" value="paragraphs" checked><label class="seg-label seg-label-text h-full" for="layout-paragraphs" data-i18n="layoutParagraphs">Paragraphs</label></div>
+                                <div class="relative flex-1 sm:flex-none"><input class="seg-input sr-only" type="radio" name="layout" id="layout-sentences" value="sentences"><label class="seg-label seg-label-text h-full" for="layout-sentences" data-i18n="layoutSentences">Sentences</label></div>
+                                <div class="relative flex-1 sm:flex-none"><input class="seg-input sr-only" type="radio" name="layout" id="layout-cues" value="cues"><label class="seg-label seg-label-text h-full" for="layout-cues" data-i18n="layoutCues">Original cues</label></div>
+                            </div>
+                        </fieldset>
+                    </div>
                     <div class="grid grid-cols-2 sm:flex gap-3">
                         <button id="preview-btn" type="button" class="btn btn-secondary">
                             <span id="preview-spinner" class="spinner" hidden></span>
@@ -437,6 +463,16 @@
         const PREVIEW_LIMIT = 4000;
         const AUTO_FILTER_THRESHOLD = 12;
 
+        // Preferred subtitle languages for the "Recommended" group, highest priority first.
+        // Edit this list to change which tracks are suggested. 'en-orig' is YouTube's original-language
+        // English auto track; an entry like 'en' also accepts regional codes such as 'en-US' when no exact
+        // match exists, but never another entry of this list (so 'en' never picks up 'en-orig').
+        // Add a display name for any new code under langNames in both I18N dictionaries.
+        const PREFERRED_LANGS = ['en-orig', 'en', 'ko'];
+
+        const TXT_LAYOUTS = ['paragraphs', 'sentences', 'cues'];
+        const LAYOUT_KEY = 'yts_txt_layout';
+
         // ---------------- i18n ----------------
         const I18N = {
             en: {
@@ -458,10 +494,19 @@
                 trackCountOne: '1 track',
                 manualGroup: 'Manual subtitles',
                 autoGroup: 'Auto-generated',
+                recGroup: 'Recommended',
+                recOrder: 'Order: {list}',
+                kindManual: 'manual',
+                kindAuto: 'auto',
+                langNames: { 'en-orig': 'English (original)', en: 'English', ko: 'Korean' },
                 filterLabel: 'Filter languages',
                 filterPlaceholder: 'Filter languages, e.g. Spanish or es',
                 noMatch: 'No languages match.',
                 formatLabel: 'Format',
+                layoutLabel: 'Text layout',
+                layoutParagraphs: 'Paragraphs',
+                layoutSentences: 'Sentences',
+                layoutCues: 'Original cues',
                 previewBtn: 'Preview',
                 downloadBtn: 'Download',
                 previewLabel: 'Subtitle preview',
@@ -497,10 +542,19 @@
                 trackCountOne: '자막 1개',
                 manualGroup: '업로더 제공 자막',
                 autoGroup: '자동 생성 자막',
+                recGroup: '추천 자막',
+                recOrder: '우선순위: {list}',
+                kindManual: '업로더',
+                kindAuto: '자동',
+                langNames: { 'en-orig': '영어(원본)', en: '영어', ko: '한국어' },
                 filterLabel: '언어 검색',
                 filterPlaceholder: '언어 검색 (예: Spanish, es)',
                 noMatch: '일치하는 언어가 없습니다.',
                 formatLabel: '파일 형식',
+                layoutLabel: '텍스트 줄 정돈',
+                layoutParagraphs: '문단',
+                layoutSentences: '한 문장씩',
+                layoutCues: '원본 줄',
                 previewBtn: '미리 보기',
                 downloadBtn: '다운로드',
                 previewLabel: '자막 미리 보기',
@@ -525,6 +579,7 @@
             info: null,
             selected: -1,     // index into info.tracks
             fmt: 'srt',
+            layout: 'paragraphs', // TXT layout, sent only when fmt is txt
             previewText: '',
             previewShown: 0,
             infoCtrl: null,
@@ -542,10 +597,12 @@
             result: $('result'), thumbImg: $('thumb-img'), thumbFallback: $('thumb-fallback'),
             title: $('video-title'), channel: $('video-channel'),
             duration: $('video-duration'), durationText: $('video-duration-text'), trackCount: $('track-count'),
+            recGroup: $('rec-group'), recChips: $('rec-chips'), recOrder: $('rec-order'),
             manualGroup: $('manual-group'), manualChips: $('manual-chips'),
             autoGroup: $('auto-group'), autoChips: $('auto-chips'), autoFilterWrap: $('auto-filter-wrap'),
             autoFilter: $('auto-filter'), autoEmpty: $('auto-empty'),
             previewBtn: $('preview-btn'), previewSpinner: $('preview-spinner'), previewIcon: $('preview-icon'),
+            layoutGroup: $('layout-group'),
             downloadBtn: $('download-btn'), downloadLink: $('download-link'),
             downloadSpinner: $('download-spinner'), downloadIcon: $('download-icon'),
             previewPanel: $('preview-panel'), previewCount: $('preview-count'), previewPre: $('preview-text'),
@@ -587,6 +644,7 @@
             if (state.urlErrorKey) els.urlError.textContent = t(state.urlErrorKey);
             if (state.loading) els.statusText.textContent = t('loading');
             if (state.info) renderMeta();
+            renderRecOrder();
             if (!els.previewPanel.hidden) renderPreviewCount();
         }
         els.langBtns.forEach((b) => b.addEventListener('click', () => {
@@ -757,8 +815,11 @@
             const auto = [];
             info.tracks.forEach((tr, i) => (tr.auto ? auto : manual).push(i));
 
+            const rec = recommendedTracks(info.tracks);
+            renderChips(els.recChips, rec, { prefix: 'rec-track', kindTag: true });
             renderChips(els.manualChips, manual);
             renderChips(els.autoChips, auto);
+            els.recGroup.hidden = rec.length === 0;
             els.manualGroup.hidden = manual.length === 0;
             els.autoGroup.hidden = auto.length === 0;
 
@@ -766,8 +827,10 @@
             els.autoEmpty.hidden = true;
             els.autoFilterWrap.hidden = auto.length <= AUTO_FILTER_THRESHOLD;
 
-            const first = manual.length ? manual[0] : (auto.length ? auto[0] : -1);
-            selectTrack(first);
+            // Preselect the first Recommended track, else the first manual, else the first auto.
+            let first = -1;
+            if (rec.length) { first = rec[0]; selectTrack(first, `rec-track-${first}`); }
+            else { first = manual.length ? manual[0] : (auto.length ? auto[0] : -1); selectTrack(first); }
 
             const hasTracks = first !== -1;
             els.downloadBtn.disabled = !hasTracks;
@@ -784,12 +847,41 @@
             return tr.auto ? tr.name.replace(/\s*\(auto-generated\)\s*$/i, '') || tr.name : tr.name;
         }
 
-        function renderChips(container, indexes) {
+        // Track indexes for the Recommended group, in PREFERRED_LANGS order. Per entry: exact lang match
+        // first, else a regional variant ('en' -> 'en-US') that is not itself a listed entry. At most one
+        // manual and one auto track per entry, manual first.
+        function recommendedTracks(tracks) {
+            const out = [];
+            const used = new Set();
+            PREFERRED_LANGS.forEach((entry) => {
+                const want = entry.toLowerCase();
+                [false, true].forEach((isAuto) => {
+                    const pick = (test) => tracks.findIndex((tr, i) => tr.auto === isAuto && !used.has(i) && test(tr.lang.toLowerCase()));
+                    let i = pick((lang) => lang === want);
+                    if (i === -1) {
+                        i = pick((lang) => lang.startsWith(want + '-') &&
+                            !PREFERRED_LANGS.some((p) => p.toLowerCase() === lang));
+                    }
+                    if (i !== -1) { used.add(i); out.push(i); }
+                });
+            });
+            return out;
+        }
+
+        function renderRecOrder() {
+            const names = t('langNames');
+            const lookup = (code) => (names && typeof names === 'object' && names[code]) || (I18N.en.langNames[code]) || code;
+            els.recOrder.textContent = t('recOrder', { list: PREFERRED_LANGS.map(lookup).join(', ') });
+        }
+
+        function renderChips(container, indexes, opts) {
+            const prefix = (opts && opts.prefix) || 'track';
+            const kindTag = !!(opts && opts.kindTag);
             container.textContent = '';
             const frag = document.createDocumentFragment();
             indexes.forEach((i) => {
                 const tr = state.info.tracks[i];
-                const id = `track-${i}`;
+                const id = `${prefix}-${i}`;
                 const wrap = document.createElement('div');
                 wrap.className = 'chip max-w-full';
                 wrap.dataset.search = `${tr.name} ${tr.lang}`.toLowerCase();
@@ -811,7 +903,16 @@
                 const code = document.createElement('span');
                 code.className = 'chip-code';
                 code.textContent = tr.lang;
-                label.append(name, code);
+                label.append(name);
+                if (kindTag) {
+                    // Recommended mixes manual and auto tracks, so say which one this chip is.
+                    const kind = document.createElement('span');
+                    kind.className = 'chip-kind';
+                    kind.dataset.i18n = tr.auto ? 'kindAuto' : 'kindManual';
+                    kind.textContent = t(kind.dataset.i18n);
+                    label.append(kind);
+                }
+                label.append(code);
 
                 wrap.append(input, label);
                 frag.appendChild(wrap);
@@ -819,9 +920,10 @@
             container.appendChild(frag);
         }
 
-        function selectTrack(i) {
+        // All chips share name="track", so checking one input unchecks every other chip in every group.
+        function selectTrack(i, inputId) {
             state.selected = i;
-            const input = i >= 0 ? document.getElementById(`track-${i}`) : null;
+            const input = i >= 0 ? document.getElementById(inputId || `track-${i}`) : null;
             if (input) input.checked = true;
             resetPreview();
         }
@@ -833,9 +935,22 @@
                 resetPreview();
             } else if (el.name === 'fmt' && el.checked) {
                 state.fmt = el.value;
+                syncLayoutGroup();
+                resetPreview();
+            } else if (el.name === 'layout' && el.checked) {
+                setLayout(el.value);
+                storageSet(LAYOUT_KEY, state.layout);
                 resetPreview();
             }
         });
+
+        function setLayout(value) {
+            state.layout = TXT_LAYOUTS.includes(value) ? value : 'paragraphs';
+            const input = document.getElementById(`layout-${state.layout}`);
+            if (input) input.checked = true;
+        }
+        // Hidden (not just disabled) for SRT and VTT.
+        function syncLayoutGroup() { els.layoutGroup.hidden = state.fmt !== 'txt'; }
 
         els.autoFilter.addEventListener('input', () => {
             const q = els.autoFilter.value.trim().toLowerCase();
@@ -857,6 +972,7 @@
             const tr = currentTrack();
             if (!tr) return null;
             const params = new URLSearchParams({ url: state.url, lang: tr.lang, auto: String(tr.auto), fmt: state.fmt });
+            if (state.fmt === 'txt') params.set('layout', state.layout);
             return `${API_BASE}/api/download?${params.toString()}`;
         }
 
@@ -1010,6 +1126,8 @@
 
         // ---------------- Init ----------------
         setTheme(els.html.dataset.theme === 'dark' ? 'dark' : 'light');
+        setLayout(storageGet(LAYOUT_KEY));
+        syncLayoutGroup();
         applyLang(storageGet('yts_lang') || 'en');
     })();
     </script>

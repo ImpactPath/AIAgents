@@ -4,7 +4,7 @@ Everything goes through one small pipeline:
 
     parse_cues(text)  -> list[Cue]   (WebVTT or SRT in, cleaned cue text out)
     clean_cues(cues)  -> list[Cue]   (drops empty cues and YouTube "rolling" duplicates)
-    render_srt / render_vtt / render_txt
+    render_srt / render_vtt / render_txt (cues, sentences or paragraphs)
 
 No I/O and no third-party imports, so it is easy to test.
 """
@@ -16,6 +16,18 @@ import re
 from dataclasses import dataclass
 
 FORMATS = ("srt", "vtt", "txt")
+LAYOUTS = ("paragraphs", "sentences", "cues")  # TXT layouts; the first is the default
+
+# Tokens that end with a period but do not end a sentence (compared lowercased,
+# without the final period). Extend freely.
+ABBREVIATIONS = frozenset(
+    "mr mrs ms dr prof sr jr st vs etc e.g i.e no fig approx dept inc ltd co u.s u.k a.m p.m".split()
+)
+
+# A new paragraph starts after a sentence that ends a cue followed by a pause
+# this long, or after any sentence once the paragraph is this long.
+PARAGRAPH_GAP_MS = 2000
+PARAGRAPH_MAX_CHARS = 600
 
 # HH:MM:SS.mmm, MM:SS.mmm, and the SRT flavor with a comma.
 _TS = r"(?:\d+:)?\d{1,2}:\d{2}[.,]\d{1,3}"
@@ -23,6 +35,13 @@ _TIMING_RE = re.compile(rf"^\s*({_TS})\s*-->\s*({_TS})")
 _TS_PARTS_RE = re.compile(r"^(?:(\d+):)?(\d{1,2}):(\d{2})[.,](\d{1,3})$")
 _TAG_RE = re.compile(r"<[^>]*>")
 _SKIP_BLOCKS = ("NOTE", "STYLE", "REGION")
+# Sentence end: Latin punctuation needs following whitespace; CJK full-width
+# punctuation does not. Both may be followed by closing quotes or brackets.
+_CLOSERS = "\"')]\u201d\u2019\u300d\u300f\uff09"
+_OPENERS = "\"'([\u201c\u2018"
+_SENTENCE_END_RE = re.compile(
+    rf"[.!?\u2026]+[{re.escape(_CLOSERS)}]*(?=\s)|[\u3002\uff01\uff1f]+[{re.escape(_CLOSERS)}]*"
+)
 
 # Duplicate cues further apart than this are treated as intentional repeats.
 _MERGE_GAP_MS = 1000
@@ -150,12 +169,101 @@ def render_txt(cues: list[Cue]) -> str:
     return "\n".join(lines) + "\n" if lines else ""
 
 
-def convert(text: str, fmt: str) -> str:
-    """Convert raw VTT/SRT subtitle text into the requested format."""
+def _is_false_end(text: str, match: re.Match) -> bool:
+    """True when a period follows an initial or a known abbreviation."""
+    if match.group().rstrip(_CLOSERS) != ".":
+        return False
+    before = text[: match.start()].split()
+    token = before[-1].lstrip(_OPENERS) if before else ""
+    if len(token) == 1 and token.isascii() and token.isalpha() and token != "I":
+        return True  # initials like "J. R. Tolkien" (but not the pronoun "I")
+    if token.lower() == "no":  # "No. 5" is an abbreviation, a spoken "no." is not
+        return text[match.end() :].lstrip()[:1].isdigit()
+    return token.lower() in ABBREVIATIONS
+
+
+def _sentence_ends(text: str) -> list[int]:
+    """Offsets just past each sentence end in text (the end of input is always one)."""
+    ends = [m.end() for m in _SENTENCE_END_RE.finditer(text) if not _is_false_end(text, m)]
+    if not ends or ends[-1] < len(text):
+        ends.append(len(text))
+    return ends
+
+
+def split_sentences(text: str) -> list[str]:
+    """Split running text into sentences with a small punctuation heuristic.
+
+    Decimals like "3.5" never split because a Latin sentence end must be
+    followed by whitespace. A trailing fragment without punctuation is kept.
+    """
+    out, start = [], 0
+    for end in _sentence_ends(text):
+        sentence = " ".join(text[start:end].split())
+        if sentence:
+            out.append(sentence)
+        start = end
+    return out
+
+
+def _joined(cues: list[Cue]) -> tuple[str, dict[int, int]]:
+    """Join cue texts with spaces; map each cue's end offset to the pause after it."""
+    items: list[list] = []  # [text, start, end]
+    for cue in cues:
+        line = " ".join(cue.text.split())
+        if not line:
+            continue
+        if items and items[-1][0] == line:
+            items[-1][2] = max(items[-1][2], cue.end)
+        else:
+            items.append([line, cue.start, cue.end])
+    text, gaps = "", {}
+    for i, (line, _start, end) in enumerate(items):
+        text += (" " if text else "") + line
+        if i + 1 < len(items):
+            gaps[len(text)] = items[i + 1][1] - end
+    return text, gaps
+
+
+def render_txt_sentences(cues: list[Cue]) -> str:
+    sentences = split_sentences(_joined(cues)[0])
+    return "\n".join(sentences) + "\n" if sentences else ""
+
+
+def render_txt_paragraphs(cues: list[Cue]) -> str:
+    text, gaps = _joined(cues)
+    paragraphs: list[str] = []
+    current: list[str] = []
+    start = 0
+    for end in _sentence_ends(text):
+        sentence = " ".join(text[start:end].split())
+        start = end
+        if sentence:
+            current.append(sentence)
+        long_pause = gaps.get(end, 0) >= PARAGRAPH_GAP_MS
+        if current and (long_pause or len(" ".join(current)) >= PARAGRAPH_MAX_CHARS):
+            paragraphs.append(" ".join(current))
+            current = []
+    if current:
+        paragraphs.append(" ".join(current))
+    return "\n\n".join(paragraphs) + "\n" if paragraphs else ""
+
+
+_TXT_RENDERERS = {"paragraphs": render_txt_paragraphs, "sentences": render_txt_sentences, "cues": render_txt}
+
+
+def convert(text: str, fmt: str, layout: str = "paragraphs") -> str:
+    """Convert raw VTT/SRT subtitle text into the requested format.
+
+    layout only applies to fmt="txt" and is ignored otherwise.
+    """
     if fmt not in FORMATS:
         raise ValueError(f"unsupported format: {fmt}")
+    if fmt == "txt" and layout not in LAYOUTS:
+        raise ValueError(f"unsupported layout: {layout}")
     cues = clean_cues(parse_cues(text))
-    return {"srt": render_srt, "vtt": render_vtt, "txt": render_txt}[fmt](cues)
+    if fmt == "txt":
+        return _TXT_RENDERERS[layout](cues)
+    return {"srt": render_srt, "vtt": render_vtt}[fmt](cues)
 
 
 def vtt_to_srt(vtt: str) -> str:
@@ -163,4 +271,5 @@ def vtt_to_srt(vtt: str) -> str:
 
 
 def vtt_to_txt(vtt: str) -> str:
-    return convert(vtt, "txt")
+    """One cue per line (the original TXT behavior)."""
+    return convert(vtt, "txt", "cues")
