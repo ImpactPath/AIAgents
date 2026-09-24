@@ -272,6 +272,10 @@
         }
         @keyframes spin { to { transform: rotate(360deg); } }
 
+        /* Selected-track line under the toolbar: muted text that scrolls to the chip on click. */
+        .selected-line { max-width: 100%; border-radius: 0.375rem; cursor: pointer; }
+        .selected-line:hover { color: var(--accent-color); text-decoration: underline; text-underline-offset: 3px; }
+
         .footer-link { color: var(--accent-color); text-decoration: underline; text-underline-offset: 3px; }
 
         [hidden] { display: none !important; }
@@ -368,34 +372,7 @@
 
                 <div class="border-t divider my-5"></div>
 
-                <!-- Track groups -->
-                <fieldset id="rec-group" class="mb-5" hidden>
-                    <legend class="text-sm font-semibold mb-2.5" data-i18n="recGroup">Recommended</legend>
-                    <div id="rec-chips" class="flex flex-wrap gap-2"></div>
-                    <p id="rec-order" class="t-3 text-xs mt-2"></p>
-                </fieldset>
-
-                <fieldset id="manual-group" class="mb-5">
-                    <legend class="text-sm font-semibold mb-2.5" data-i18n="manualGroup">Manual subtitles</legend>
-                    <div id="manual-chips" class="flex flex-wrap gap-2"></div>
-                </fieldset>
-
-                <fieldset id="auto-group" class="mb-5">
-                    <legend class="text-sm font-semibold mb-2.5" data-i18n="autoGroup">Auto-generated</legend>
-                    <div id="auto-filter-wrap" class="mb-3" hidden>
-                        <label for="auto-filter" class="sr-only" data-i18n="filterLabel">Filter languages</label>
-                        <div class="relative max-w-xs">
-                            <svg class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 t-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-4.35-4.35M17 11a6 6 0 11-12 0 6 6 0 0112 0z"></path></svg>
-                            <input id="auto-filter" type="search" autocomplete="off" spellcheck="false"
-                                class="field w-full h-10 pl-9 pr-3 rounded-lg text-sm"
-                                data-i18n-placeholder="filterPlaceholder" placeholder="Filter languages, e.g. Spanish or es">
-                        </div>
-                    </div>
-                    <div id="auto-chips" class="flex flex-wrap gap-2"></div>
-                    <p id="auto-empty" class="t-3 text-sm" data-i18n="noMatch" hidden>No languages match.</p>
-                </fieldset>
-
-                <!-- Format + actions -->
+                <!-- Action toolbar: format, text layout, preview and download (kept above the long track lists) -->
                 <div class="flex flex-col sm:flex-row sm:items-end gap-4 sm:justify-between">
                     <div class="flex flex-col gap-4 min-w-0">
                         <fieldset>
@@ -430,8 +407,13 @@
                     </div>
                 </div>
 
+                <!-- Currently selected track; click to scroll to its chip -->
+                <div id="selected-wrap" class="mt-3 min-w-0" hidden>
+                    <button id="selected-line" type="button" class="selected-line t-3 text-xs sm:text-sm text-left break-words" data-i18n-title="selectedJump" title="Show the selected track in the list"></button>
+                </div>
+
                 <!-- Preview panel -->
-                <div id="preview-panel" class="mt-5" hidden>
+                <div id="preview-panel" class="mt-4" hidden>
                     <div class="flex items-center justify-between gap-3 mb-2">
                         <p id="preview-count" class="t-2 text-xs sm:text-sm min-w-0"></p>
                         <button id="copy-btn" type="button" class="btn btn-ghost flex-none" data-i18n-title="copyTitle" title="Copies the full subtitle text">
@@ -441,6 +423,35 @@
                     </div>
                     <pre id="preview-text" class="pre-box rounded-xl p-3 sm:p-4 text-xs sm:text-sm leading-relaxed max-h-96 overflow-auto" tabindex="0" data-i18n-aria-label="previewLabel" aria-label="Subtitle preview"></pre>
                 </div>
+
+                <div class="border-t divider my-5"></div>
+
+                <!-- Track groups (radio name="track" is shared, so exactly one chip is checked overall) -->
+                <fieldset id="rec-group" class="mb-5" hidden>
+                    <legend class="text-sm font-semibold mb-2.5" data-i18n="recGroup">Recommended</legend>
+                    <div id="rec-chips" class="flex flex-wrap gap-2"></div>
+                    <p id="rec-order" class="t-3 text-xs mt-2"></p>
+                </fieldset>
+
+                <fieldset id="manual-group" class="mb-5">
+                    <legend class="text-sm font-semibold mb-2.5" data-i18n="manualGroup">Manual subtitles</legend>
+                    <div id="manual-chips" class="flex flex-wrap gap-2"></div>
+                </fieldset>
+
+                <fieldset id="auto-group">
+                    <legend class="text-sm font-semibold mb-2.5" data-i18n="autoGroup">Auto-generated</legend>
+                    <div id="auto-filter-wrap" class="mb-3" hidden>
+                        <label for="auto-filter" class="sr-only" data-i18n="filterLabel">Filter languages</label>
+                        <div class="relative max-w-xs">
+                            <svg class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 t-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-4.35-4.35M17 11a6 6 0 11-12 0 6 6 0 0112 0z"></path></svg>
+                            <input id="auto-filter" type="search" autocomplete="off" spellcheck="false"
+                                class="field w-full h-10 pl-9 pr-3 rounded-lg text-sm"
+                                data-i18n-placeholder="filterPlaceholder" placeholder="Filter languages, e.g. Spanish or es">
+                        </div>
+                    </div>
+                    <div id="auto-chips" class="flex flex-wrap gap-2"></div>
+                    <p id="auto-empty" class="t-3 text-sm" data-i18n="noMatch" hidden>No languages match.</p>
+                </fieldset>
             </section>
         </main>
 
@@ -498,6 +509,8 @@
                 recOrder: 'Order: {list}',
                 kindManual: 'manual',
                 kindAuto: 'auto',
+                selectedTrack: 'Selected: {name} · {kind} · {lang}',
+                selectedJump: 'Show the selected track in the list',
                 langNames: { 'en-orig': 'English (original)', en: 'English', ko: 'Korean' },
                 filterLabel: 'Filter languages',
                 filterPlaceholder: 'Filter languages, e.g. Spanish or es',
@@ -546,6 +559,8 @@
                 recOrder: '우선순위: {list}',
                 kindManual: '업로더',
                 kindAuto: '자동',
+                selectedTrack: '선택됨: {name} · {kind} · {lang}',
+                selectedJump: '목록에서 선택한 자막 보기',
                 langNames: { 'en-orig': '영어(원본)', en: '영어', ko: '한국어' },
                 filterLabel: '언어 검색',
                 filterPlaceholder: '언어 검색 (예: Spanish, es)',
@@ -603,6 +618,7 @@
             autoFilter: $('auto-filter'), autoEmpty: $('auto-empty'),
             previewBtn: $('preview-btn'), previewSpinner: $('preview-spinner'), previewIcon: $('preview-icon'),
             layoutGroup: $('layout-group'),
+            selectedWrap: $('selected-wrap'), selectedLine: $('selected-line'),
             downloadBtn: $('download-btn'), downloadLink: $('download-link'),
             downloadSpinner: $('download-spinner'), downloadIcon: $('download-icon'),
             previewPanel: $('preview-panel'), previewCount: $('preview-count'), previewPre: $('preview-text'),
@@ -645,6 +661,7 @@
             if (state.loading) els.statusText.textContent = t('loading');
             if (state.info) renderMeta();
             renderRecOrder();
+            renderSelectedLine();
             if (!els.previewPanel.hidden) renderPreviewCount();
         }
         els.langBtns.forEach((b) => b.addEventListener('click', () => {
@@ -925,13 +942,35 @@
             state.selected = i;
             const input = i >= 0 ? document.getElementById(inputId || `track-${i}`) : null;
             if (input) input.checked = true;
+            renderSelectedLine();
             resetPreview();
         }
+
+        function renderSelectedLine() {
+            const tr = currentTrack();
+            els.selectedWrap.hidden = !tr;
+            if (!tr) { els.selectedLine.textContent = ''; return; }
+            els.selectedLine.textContent = t('selectedTrack', {
+                name: displayName(tr), kind: t(tr.auto ? 'kindAuto' : 'kindManual'), lang: tr.lang,
+            });
+        }
+
+        // Scroll to the checked chip (whichever group it is in) and move focus to it.
+        els.selectedLine.addEventListener('click', () => {
+            const input = document.querySelector('input[name="track"]:checked');
+            if (!input) return;
+            const chip = input.closest('.chip') || input;
+            if (chip.hidden) { els.autoFilter.value = ''; els.autoFilter.dispatchEvent(new Event('input')); }
+            const reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+            chip.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'center' });
+            input.focus({ preventScroll: true });
+        });
 
         document.addEventListener('change', (e) => {
             const el = e.target;
             if (el.name === 'track' && el.checked) {
                 state.selected = Number(el.value);
+                renderSelectedLine();
                 resetPreview();
             } else if (el.name === 'fmt' && el.checked) {
                 state.fmt = el.value;
