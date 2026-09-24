@@ -490,7 +490,8 @@
         const AUTO_FILTER_THRESHOLD = 12;
 
         // Language groups for the "Recommended" group, highest priority first. For each group the
-        // uploader-provided ("original", manual) track comes first, then the listed auto codes in order.
+        // uploader-provided ("original", manual) track comes first, then the listed auto codes in order;
+        // when an auto code ending in -orig matches, the remaining auto codes of that group are skipped.
         // 'en-orig' is YouTube's unedited English auto track. Codes ending in -orig match exactly; other
         // codes also accept a regional variant such as 'en-US' when no exact match exists, but never a
         // code listed anywhere in this list (so 'en' never picks up 'en-orig').
@@ -907,6 +908,7 @@
         // Track indexes for the Recommended group, following PREFERRED: per group the manual track, then
         // each listed auto code in order. Exact match first; codes not ending in -orig fall back to a
         // regional variant ('en' -> 'en-US') that is not itself listed in PREFERRED. No track twice.
+        // If an -orig auto code matches, the group's later auto codes are skipped.
         function recommendedTracks(tracks) {
             const listed = new Set();
             PREFERRED.forEach((g) => { if (g.manual) listed.add(g.manual.toLowerCase()); (g.auto || []).forEach((c) => listed.add(c.toLowerCase())); });
@@ -918,10 +920,14 @@
                 let i = pick((lang) => lang === want);
                 if (i === -1 && !/-orig$/.test(want)) i = pick((lang) => lang.startsWith(want + '-') && !listed.has(lang));
                 if (i !== -1) { used.add(i); out.push(i); }
+                return i !== -1;
             };
             PREFERRED.forEach((g) => {
                 if (g.manual) add(g.manual, false);
-                (g.auto || []).forEach((code) => add(code, true));
+                // Once an -orig auto track matched, skip the group's remaining auto codes.
+                for (const code of (g.auto || [])) {
+                    if (add(code, true) && /-orig$/i.test(code)) break;
+                }
             });
             return out;
         }
