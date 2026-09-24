@@ -108,7 +108,18 @@ after changing the view sources in `ui/`, rebuild it with `cd ui && npm install 
 - **Summary report (.md)** asks Claude to fetch the subtitles and write its own structured summary (overview, key arguments, paraphrased quotes, timeline, takeaways) as a downloadable Markdown file named after the video, plus a three-line summary in the chat.
 - **Add to chat** fetches the selected track as TXT paragraphs and places it in the chat composer as a user message (`ui/message`) with a short instruction; the user presses send, and later questions use the transcript without another tool call. Claude Desktop accepts `ui/update-model-context` but the model did not see content sent that way, so the app does not use it.
 - The prompt buttons (Summarize, Translate, Key points, Summary report) fill the chat composer; the user sends the message and Claude then calls `get_subtitles`. The server answers that call from its 10-minute caption cache, so YouTube is not contacted again for a track already previewed or downloaded. After **Add to chat** for the same track, these prompts instead tell Claude to use the transcript already in the conversation and to fetch only if it is missing.
-- An expand button appears in the header only on hosts that list `fullscreen` in `availableDisplayModes`; it toggles between the inline card and the host's full-screen view. The menu is an MCP App rendered by the host and cannot be turned into a Claude artifact.
+- An expand button appears in the header only on hosts that list `fullscreen` in `availableDisplayModes` (Claude Desktop does); it toggles between the inline card and the host's full-screen view. The menu is an MCP App rendered by the host and cannot be turned into a Claude artifact.
+
+Verified in Claude Desktop: the menu card, Download (saves the file), Preview, the prompt buttons (they fill
+the composer; Desktop shows its usual "use caution before running this prompt" banner, which is normal),
+Summary report (.md) producing a Markdown file, Add to chat, and the expand button.
+
+Claude Desktop treats every tool that renders an MCP App as a third-party app that needs a one-time opt-in
+per conversation: with a bare link it may show a "Your connectors" card and wait, and pressing "Use" alone
+does not run the tool until you send another message. Naming the connector in the first message, for
+example "Use YouTube Subtitles for this: https://youtu.be/<id>", opens the menu directly; later links in
+the same conversation need no name. Renaming the connector to something short in Desktop's settings makes
+that easier to type. The server cannot bypass this rule.
 
 The server enforces that flow: `get_subtitles` and `get_download_link` return an error unless the call
 passes `user_confirmed: true` (set only once the user picked an action in the menu, answered the questions, or
@@ -130,7 +141,8 @@ Set `MCP_API_KEY` on the host, then use `https://<your-host>/mcp?key=<value>` as
 - ChatGPT: Settings > Connectors > Advanced > Developer mode > Create, paste the URL. Or build a Custom
   GPT Action by importing `https://<host>/openapi.json` (set `PUBLIC_BASE_URL` on the server first).
 
-Example prompt: "Get the subtitles of https://youtu.be/<id> and summarize them in Korean." Machine-
+Example prompts: "Use YouTube Subtitles for this: https://youtu.be/<id>" (opens the menu) or "Get the
+subtitles of https://youtu.be/<id> and summarize them in Korean" (explicit, no questions). Machine-
 translated YouTube captions are rate-limited and are not offered, so the tools return the original
 language; the model translates the text itself.
 
