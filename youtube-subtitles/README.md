@@ -110,6 +110,24 @@ language; the model translates the text itself.
 
 ## Free deployment
 
+### Your own Mac plus Tailscale Funnel (recommended when you have an always-on Mac)
+
+Running on a home network avoids YouTube's data-center IP blocks entirely, and Tailscale Funnel gives the
+app a stable public HTTPS address for free.
+
+1. Install Tailscale from https://tailscale.com/download/mac and sign in.
+2. Register the app as a LaunchAgent (starts at login, restarts on crash):
+   `scripts/mac/install_launch_agent.sh <MCP_API_KEY>` from `youtube-subtitles/` with the virtualenv created.
+3. Publish it: `/Applications/Tailscale.app/Contents/MacOS/Tailscale funnel --bg 7860`. The printed
+   `https://<mac-name>.<tailnet>.ts.net/` is your web app; `/mcp?key=<MCP_API_KEY>` on it is the MCP URL.
+   The Funnel setting persists across reboots as long as Tailscale starts at login.
+4. Keep the Mac awake (System Settings > Energy or Displays > prevent automatic sleeping) and enable
+   automatic login so the LaunchAgent starts without a user at the keyboard.
+
+Logs: `~/Library/Logs/youtube-subtitles.log`. Update: `git pull` in the repo, then
+`launchctl kickstart -k gui/$(id -u)/com.youtube-subtitles`.
+
+
 ### Hugging Face Spaces (Docker, requires a PRO subscription)
 
 Hugging Face no longer allows Docker Spaces on free accounts (the API answers 402 Payment Required).
