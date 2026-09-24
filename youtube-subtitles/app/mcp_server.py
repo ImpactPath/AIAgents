@@ -46,13 +46,18 @@ TWO_STEP_GUIDANCE = (
     "get_subtitles with the recommended track as TXT paragraphs."
 )
 INSTRUCTIONS = (
-    "Fetch YouTube subtitles. When the user shares a YouTube link, call get_video_info first; on clients that "
-    "render MCP Apps it shows an interactive menu where the user picks the track, format and action, so wait "
-    "for their choice. On other clients, " + TWO_STEP_GUIDANCE + " To give the user a file, call "
-    "get_download_link and show its download_url as a clickable link; it is a public HTTPS address that works "
-    "on any device. Machine-translated YouTube captions are rate-limited and hidden; download the original "
-    "language and translate the text yourself if another language is needed. get_subtitles also attaches the "
-    "file as a resource; tell the user it is attached if the client shows it. get_subtitles and "
+    "Fetch YouTube subtitles. Whenever the user shares a YouTube link or video id, call get_video_info at once, "
+    "before asking any question and before any other tool (never fetch the YouTube page with a web tool; that "
+    "fails). get_video_info only looks up the title and the subtitle tracks and downloads nothing, so it is "
+    "always safe to call first. Its result says what to do next: either the interactive subtitle menu is shown "
+    "and you wait for the user's choice there, or, on clients without the menu, it lists the tracks and the "
+    "two questions to ask. Never ask what to do with a video before get_video_info has returned. When the "
+    "user's request is already explicit (for example 'summarize this video'), call get_video_info and then "
+    "get_subtitles with the recommended track as TXT paragraphs, without questions. To give the user a file, "
+    "call get_download_link and show its download_url as a clickable link; it is a public HTTPS address that "
+    "works on any device. Machine-translated YouTube captions are rate-limited and hidden; download the "
+    "original language and translate the text yourself if another language is needed. get_subtitles also "
+    "attaches the file as a resource; tell the user it is attached if the client shows it. get_subtitles and "
     "get_download_link refuse to run until user_confirmed=true and get_video_info was called for that video "
     "in this session."
 )
@@ -584,9 +589,9 @@ def _video_info_data(info: youtube.VideoInfo, base: str) -> VideoInfoOut:
     description=(
         "Look up a YouTube video link: title, channel, duration, and the downloadable subtitle tracks (uploader "
         "subtitles and original-language auto captions), and show the interactive subtitle menu (download the "
-        "subtitle file, preview, summarize, translate, key points). Call this first whenever the user shares a "
-        "YouTube URL or video id. Returns tracks with lang/auto to pass to get_subtitles or get_download_link, "
-        "and a recommended track."
+        "subtitle file, preview, summarize, translate, key points). Call this at once, before asking the user "
+        "anything, whenever they share a YouTube URL or video id; it downloads no subtitles. Returns tracks "
+        "with lang/auto to pass to get_subtitles or get_download_link, a recommended track, and the next step."
     ),
 )
 async def get_video_info(url: str, ctx: Context) -> Annotated[CallToolResult, VideoInfoOut]:

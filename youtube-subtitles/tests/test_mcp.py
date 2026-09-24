@@ -131,9 +131,11 @@ def test_initialize_and_tools_list(client):
     result = r.json()["result"]
     assert result["serverInfo"]["name"] == "youtube-subtitles"
     instructions = result["instructions"]
-    assert "call get_video_info first" in instructions and "get_download_link" in instructions
-    assert "ask the user in two steps before fetching anything" in instructions
-    assert "skip the questions and call get_subtitles" in instructions and "subtitle_menu" not in instructions
+    assert "call get_video_info at once, before asking any question" in instructions
+    assert "Never ask what to do with a video before get_video_info has returned" in instructions
+    assert "get_download_link" in instructions and "subtitle_menu" not in instructions
+    assert "never fetch the YouTube page with a web tool" in instructions
+    assert "call get_video_info and then get_subtitles with the recommended track as TXT paragraphs" in instructions
     assert "translate the text yourself" in instructions
     note = client.post("/mcp", json={"jsonrpc": "2.0", "method": "notifications/initialized"},
                        headers={**HEADERS, "Mcp-Session-Id": session_id})
@@ -525,7 +527,7 @@ def test_get_video_info_listed_with_ui_resource(client):
     assert info["_meta"]["ui"]["resourceUri"] == MENU_URI
     assert info["inputSchema"]["required"] == ["url"] and set(info["inputSchema"]["properties"]) == {"url"}
     assert info["description"].startswith("Look up a YouTube video link: title, channel, duration")
-    assert "Call this first whenever the user shares a YouTube URL or video id" in info["description"]
+    assert "Call this at once, before asking the user anything, whenever they share a YouTube URL or video id" in info["description"]
     assert "show the interactive subtitle menu" in info["description"]
     assert MODEL_FIELDS | VIEW_FIELDS <= set(info["outputSchema"]["properties"])
     track_schema = info["outputSchema"]["$defs"]["TrackOut"]["properties"]

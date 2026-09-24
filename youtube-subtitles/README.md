@@ -96,7 +96,10 @@ download the file, preview the text, summarize, translate to Korean, or list the
 the `ui://youtube-subtitles/menu.html` resource, served from `app/ui/menu.html`; it may load the video
 thumbnail from `i.ytimg.com`. Its structured result carries both the fields the model reads (title,
 tracks, recommended, options) and the data the view reads (video, formats, layouts, labels, the download
-link template). Clients that declare no MCP Apps support get the same menu as text, and the model asks in
+link template). The server instructions tell the model to call `get_video_info` at once, before asking the
+user anything, because only the tool result reveals whether the host rendered the menu; a model that asks
+first would show its own question list instead of the menu. Clients that declare no MCP Apps support get
+the same menu as text, and the model asks in
 two steps: first what to do (download the subtitle file, summary, translation, key points), then, only for
 a download, which track and format. An explicit request such as "summarize this video" skips the questions. The built `app/ui/menu.html` is committed, so running the app needs no Node.js;
 after changing the view sources in `ui/`, rebuild it with `cd ui && npm install && npm run build`
