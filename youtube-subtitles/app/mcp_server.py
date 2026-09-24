@@ -651,7 +651,7 @@ def _register_track_template(fmt: str) -> None:
 
 
 def recent_videos() -> str:
-    """Videos looked up in the last 10 minutes, newest first, with the resource URI of the recommended track."""
+    """Videos still in the info cache (CACHE_TTL_SECONDS), newest first, with the recommended track's resource URI."""
     videos = []
     for info in youtube.cached_infos():
         rec = youtube.recommended_track(info)

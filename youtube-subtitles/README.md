@@ -15,9 +15,9 @@ SRT, VTT, or plain text. The backend is FastAPI plus [yt-dlp](https://github.com
 frontend is a single static HTML page (`static/index.html`) with no build step.
 
 Paste a video URL, pick a manual or auto-generated track, choose a format, and download or preview it.
-Nothing is stored on disk: video info and downloaded caption text are kept in memory for 10 minutes, so
-the lookup, a preview, a download, and a summary prompt on the same track share one yt-dlp extraction and
-one caption download.
+Nothing is stored on disk: video info and downloaded caption text are kept in memory for one hour
+(`CACHE_TTL_SECONDS`), so the lookup, a preview, a download, and a summary prompt on the same track share one
+yt-dlp extraction and one caption download.
 
 ## Layout
 
@@ -108,7 +108,7 @@ after changing the view sources in `ui/`, rebuild it with `cd ui && npm install 
 
 - **Summary report (.md)** asks Claude to fetch the subtitles and write its own structured summary (overview, key arguments, paraphrased quotes, timeline, takeaways) as a downloadable Markdown file named after the video, plus a three-line summary in the chat.
 - **Add to chat** fetches the selected track as TXT paragraphs and places it in the chat composer as a user message (`ui/message`) with a short instruction; the user presses send, and later questions use the transcript without another tool call. The instruction also asks the model, where it can create files, to save the text unchanged as `<title>.<lang>.txt` so it appears in the chat's files. Claude Desktop accepts `ui/update-model-context` but the model did not see content sent that way, so the app does not use it.
-- The prompt buttons (Summarize, Translate, Key points, Summary report) fill the chat composer; the user sends the message and Claude then calls `get_subtitles`. The server answers that call from its 10-minute caption cache, so YouTube is not contacted again for a track already previewed or downloaded. After **Add to chat** for the same track, these prompts instead tell Claude to use the transcript already in the conversation and to fetch only if it is missing.
+- The prompt buttons (Summarize, Translate, Key points, Summary report) fill the chat composer; the user sends the message and Claude then calls `get_subtitles`. The server answers that call from its caption cache (one hour by default), so YouTube is not contacted again for a track already previewed or downloaded. After **Add to chat** for the same track, these prompts instead tell Claude to use the transcript already in the conversation and to fetch only if it is missing.
 - An expand button appears in the header only on hosts that list `fullscreen` in `availableDisplayModes` (Claude Desktop does); it toggles between the inline card and the host's full-screen view. The menu is an MCP App rendered by the host and cannot be turned into a Claude artifact.
 
 Verified in Claude Desktop: the menu card, Download (saves the file), Preview, the prompt buttons (they fill
@@ -158,6 +158,7 @@ language; the model translates the text itself.
 | `MCP_API_KEY` | Secret required on every `/mcp` request (as `?key=`, `Authorization: Bearer`, or `X-API-Key`). Unset means the MCP endpoint is open to anyone (a warning is logged at startup). The web UI and REST API never need it. |
 | `PUBLIC_BASE_URL` | Public URL of the deployment, for example `https://user-youtube-subtitles.hf.space`. Listed as the server in `/openapi.json` so it can be imported into a Custom GPT Action, and used by the MCP tool `get_download_link` to build full download links. |
 | `PORT` | Listening port inside the Docker image (default 7860). |
+| `CACHE_TTL_SECONDS` | How long video info and caption text stay in memory (default 3600, minimum 60). Caption URLs from YouTube expire after a few hours, so keep it under about 4 hours. |
 | `POT_PROVIDER_URL` | Where the PO token provider listens (default `http://127.0.0.1:4416`, started by `start.sh` in the Docker image). |
 | `TOKEN_TTL` | Hours the provider caches a PO token (default 6). |
 

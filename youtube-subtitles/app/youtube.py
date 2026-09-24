@@ -16,7 +16,9 @@ from urllib.parse import parse_qs, urlparse
 
 log = logging.getLogger(__name__)
 
-CACHE_TTL_SECONDS = 600
+# How long video info and downloaded caption text stay in memory. One hour by default: long enough for a
+# whole working session on one video, shorter than the lifetime of the caption URLs yt-dlp returns.
+CACHE_TTL_SECONDS = max(60, int(os.environ.get("CACHE_TTL_SECONDS", "3600") or 3600))
 CACHE_MAX_ENTRIES = 256
 MAX_SUBTITLE_BYTES = 20 * 1024 * 1024
 # Extra attempts after an HTTP 429 on a caption download, and the sleep before each.
@@ -497,7 +499,7 @@ def _cache_put(video_id: str, info: VideoInfo) -> None:
 
 
 def fetch_info(video_id: str) -> VideoInfo:
-    """Extract metadata and subtitle tracks (blocking). Cached for 10 minutes per video id."""
+    """Extract metadata and subtitle tracks (blocking). Cached for CACHE_TTL_SECONDS per video id."""
     cached = _cache_get(video_id)
     if cached:
         return cached
