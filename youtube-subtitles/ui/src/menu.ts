@@ -510,12 +510,23 @@ function answerLanguage(): string {
   return "the language the user has been writing in (match their messages)";
 }
 
+// Tracks whose transcript "Add to chat" already put in the composer, so later prompts tell the model to
+// use that text instead of fetching it again (the user may not have sent it, so the fetch stays a fallback).
+const addedToChat = new Set<string>();
+
+function trackKey(t: Track): string {
+  return `${t.lang}|${t.auto}`;
+}
+
 function promptText(kind: string): string {
   const t = currentTrack()!;
   const v = data!.video;
-  const fetch =
-    `Using get_subtitles with url=${v.url}, lang=${t.lang}, auto=${t.auto}, fmt=txt, layout=paragraphs, ` +
-    `user_confirmed=true, fetch the subtitles of '${v.title}'`;
+  const fetch = addedToChat.has(trackKey(t))
+    ? `The subtitles of '${v.title}' (${t.lang}) were added to this conversation earlier: use that text and do ` +
+      `not call get_subtitles again. Only if they are not in this conversation, fetch them with get_subtitles ` +
+      `(url=${v.url}, lang=${t.lang}, auto=${t.auto}, fmt=txt, layout=paragraphs, user_confirmed=true). With the subtitles`
+    : `Using get_subtitles with url=${v.url}, lang=${t.lang}, auto=${t.auto}, fmt=txt, layout=paragraphs, ` +
+      `user_confirmed=true, fetch the subtitles of '${v.title}'`;
   if (kind === "report") {
     return (
       `${fetch}. Then write a detailed, structured summary report in ${answerLanguage()} with these sections: ` +
@@ -577,6 +588,7 @@ async function onAddToChat(): Promise<void> {
       `Reply with a one-line confirmation in ${answerLanguage()}.\n\n${text}`;
     const res = await app.sendMessage({ role: "user", content: [{ type: "text", text: message }] });
     if (res?.isError) throw new Error("The host did not accept the message.");
+    addedToChat.add(trackKey(t));
     showNotice(L.addedToChat);
   } catch (err) {
     showError(`${L.error}: ${errorMessage(err)}`);

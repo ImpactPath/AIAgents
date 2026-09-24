@@ -349,6 +349,14 @@ def dark_korean(browser, shots: Path) -> None:
           and "do not call get_subtitles again" in text and text.endswith(SUB_TEXT_TAIL),
           "Add to chat sends the transcript as a user message")
     f.locator("#notice").get_by_text("자막을 입력창에 넣었습니다. 전송을 누르면 채팅에 추가됩니다.").wait_for(state="visible")
+
+    # After Add to chat, prompts for the same track point at the transcript already in the conversation.
+    f.locator("#btn-report").click()
+    run.wait_for_method("ui/message", 4)
+    text = [m for m in run.log() if m.get("method") == "ui/message"][-1]["params"]["content"][0]["text"]
+    check(text.startswith(f"The subtitles of '{TITLE}' (en) were added to this conversation earlier")
+          and "do not call get_subtitles again" in text and "Only if they are not in this conversation" in text
+          and ".md" in text, "prompts after Add to chat reuse the transcript in the chat")
     passed.append("Add to chat shows the Korean confirmation")
     check(not run.errors, "no console errors (dark, ko-KR)")
     page.close()
