@@ -5,8 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>YouTube Subtitle Downloader</title>
     <meta name="description" content="Download YouTube subtitles as SRT, VTT, or plain text.">
-    <!-- Favicon: same "CC" mark as the header logo, inline so no extra file is needed -->
-    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2032%2032'%3E%3Crect%20width='32'%20height='32'%20rx='6.5'%20fill='%23dc2626'/%3E%3Ctext%20x='16'%20y='22'%20text-anchor='middle'%20font-family='Arial,Helvetica,sans-serif'%20font-size='17'%20font-weight='700'%20letter-spacing='-1'%20fill='%23ffffff'%3ECC%3C/text%3E%3C/svg%3E">
+    <!-- Favicon: same download mark as the header logo, inline so no extra file is needed -->
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2024%2024'%3E%3Crect%20width='24'%20height='24'%20rx='4.8'%20fill='%23dc2626'/%3E%3Cpath%20d='M12%204.5v10M7.5%2010l4.5%204.5%204.5-4.5M6%2019h12'%20fill='none'%20stroke='%23ffffff'%20stroke-width='2.5'%20stroke-linecap='round'%20stroke-linejoin='round'/%3E%3C/svg%3E">
     <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
     <meta name="theme-color" content="#09090b" media="(prefers-color-scheme: dark)">
     <script>
@@ -271,8 +271,9 @@
     <header class="h-14 border-b border-border">
         <div class="max-w-[57.6rem] mx-auto h-full px-4 flex items-center justify-between gap-3">
             <div class="flex items-center gap-2 min-w-0">
-                <span class="flex-none w-5 h-5 rounded-md bg-[#dc2626] text-white flex items-center justify-center text-[9px] font-bold leading-none tracking-tight" aria-hidden="true">CC</span>
-                <span class="text-sm font-semibold truncate" data-i18n="title">YouTube Subtitle Downloader</span>
+                <!-- Logo mark: same drawing as the favicon (red rounded square, white download glyph) -->
+                <svg class="flex-none w-5 h-5" viewBox="0 0 24 24" aria-hidden="true"><rect width="24" height="24" rx="4.8" fill="#dc2626"></rect><path d="M12 4.5v10M7.5 10l4.5 4.5 4.5-4.5M6 19h12" fill="none" stroke="#ffffff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+                <h1 class="text-sm font-semibold truncate" data-i18n="title">YouTube Subtitle Downloader</h1>
             </div>
             <div class="flex items-center gap-1.5 flex-none">
                 <div class="tabs" role="group" data-i18n-aria-label="langGroup" aria-label="Language">
@@ -287,11 +288,7 @@
         </div>
     </header>
 
-    <main class="flex-1 w-full max-w-[57.6rem] mx-auto px-4">
-        <!-- Hero -->
-        <section class="pt-10 pb-6 sm:pt-14 sm:pb-8">
-            <h1 class="text-3xl sm:text-4xl font-semibold tracking-tight" data-i18n="title">YouTube Subtitle Downloader</h1>
-        </section>
+    <main class="flex-1 w-full max-w-[57.6rem] mx-auto px-4 pt-10 sm:pt-14">
 
         <div>
             <!-- URL form (Card) -->
