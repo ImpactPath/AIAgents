@@ -128,6 +128,8 @@ MENU_LABELS = {
         "copy": "Copy", "copied": "Copied", "openWeb": "Open web app", "selected": "Selected",
         "downloading": "Preparing file...", "downloadReady": "If the download did not start, open this link:",
         "loading": "Loading...", "error": "Something went wrong",
+        "report": "Summary report (.md)", "addToChat": "Add to chat",
+        "addedToChat": "Subtitles added to the chat context.",
     },
     "ko": {
         "subtitles": "자막", "format": "파일 형식", "layout": "텍스트 줄 정돈",
@@ -138,6 +140,8 @@ MENU_LABELS = {
         "downloading": "파일 준비 중...",
         "downloadReady": "다운로드가 시작되지 않으면 이 링크를 여세요:",
         "loading": "불러오는 중...", "error": "오류가 발생했습니다",
+        "report": "요약 보고서 (.md)", "addToChat": "채팅에 넣기",
+        "addedToChat": "자막을 채팅 맥락에 넣었습니다.",
     },
 }
 

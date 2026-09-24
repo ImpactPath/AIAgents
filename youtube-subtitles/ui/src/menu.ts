@@ -47,6 +47,7 @@ const FALLBACK: Record<"en" | "ko", Labels> = {
     error: "Something went wrong", sent: "Sent to the chat", sending: "Sending...",
     copyHint: "Copy is blocked here. The text is selected: press Ctrl+C (Cmd+C on Mac).",
     noLink: "The server did not provide a download link.", dismiss: "Dismiss", noTracks: "This video has no downloadable subtitles.",
+    report: "Summary report (.md)", addToChat: "Add to chat", addedToChat: "Subtitles added to the chat context.",
   },
   ko: {
     subtitles: "자막", format: "파일 형식", layout: "텍스트 줄 정돈",
@@ -58,6 +59,7 @@ const FALLBACK: Record<"en" | "ko", Labels> = {
     error: "오류가 발생했습니다", sent: "채팅에 요청을 보냈습니다", sending: "보내는 중...",
     copyHint: "여기서는 복사가 막혀 있습니다. 텍스트가 선택되어 있으니 Ctrl+C (Mac은 Cmd+C)를 누르세요.",
     noLink: "서버가 다운로드 링크를 제공하지 않았습니다.", dismiss: "닫기", noTracks: "이 영상에는 내려받을 수 있는 자막이 없습니다.",
+    report: "요약 보고서 (.md)", addToChat: "채팅에 넣기", addedToChat: "자막을 채팅 맥락에 넣었습니다.",
   },
 };
 
@@ -99,6 +101,9 @@ let layout = "paragraphs";
 let previewKey = "";
 let previewText = "";
 let noticeTimer = 0;
+
+const ACTION_BUTTONS = ["btn-download", "btn-preview", "btn-summarize", "btn-translate", "btn-keypoints", "btn-report", "btn-addchat"];
+const PROMPT_BUTTONS = ["btn-summarize", "btn-translate", "btn-keypoints", "btn-report"];
 
 // ---------- Theme and locale ----------
 
@@ -304,7 +309,7 @@ function syncSelection(): void {
   $("layout-group").hidden = fmt !== "txt";
   $("selected-badge").textContent = t ? `${t.name} · ${kindLabel(t)} · ${t.lang}` : "-";
   const hasTrack = !!t;
-  for (const id of ["btn-download", "btn-preview", "btn-summarize", "btn-translate", "btn-keypoints"]) {
+  for (const id of ACTION_BUTTONS) {
     const b = $<HTMLButtonElement>(id);
     if (b.getAttribute("aria-busy") !== "true") b.disabled = !hasTrack;
   }
@@ -478,17 +483,26 @@ function answerLanguage(): string {
 function promptText(kind: string): string {
   const t = currentTrack()!;
   const v = data!.video;
+  const fetch =
+    `Using get_subtitles with url=${v.url}, lang=${t.lang}, auto=${t.auto}, fmt=txt, layout=paragraphs, ` +
+    `user_confirmed=true, fetch the subtitles of '${v.title}'`;
+  if (kind === "report") {
+    return (
+      `${fetch}. Then write a detailed, structured summary report in ${answerLanguage()} with these sections: ` +
+      "Overview (2 to 3 sentences); Key arguments, with the speaker's reasoning for each; Notable quotes, " +
+      "paraphrased rather than copied from the transcript; Timeline of topics, if timestamps are available; " +
+      "and Takeaways. The report must be your own writing, not the transcript or a lightly edited copy of it. " +
+      "Deliver it as a downloadable Markdown (.md) file named after the video title, " +
+      "and also give a three-line summary in the chat."
+    );
+  }
   const task: Record<string, string> = {
     summarize: "summarize them",
     translate: "translate them to Korean, in sections if long",
     keypoints: "list the key points with timestamps if available",
   };
   const answer = kind === "translate" ? "" : ` Answer in ${answerLanguage()}.`;
-  return (
-    `Using get_subtitles with url=${v.url}, lang=${t.lang}, auto=${t.auto}, fmt=txt, layout=paragraphs, ` +
-    `user_confirmed=true, ` +
-    `fetch the subtitles of '${v.title}' and ${task[kind]}.${answer}`
-  );
+  return `${fetch} and ${task[kind]}.${answer}`;
 }
 
 async function onPrompt(button: HTMLButtonElement): Promise<void> {
@@ -500,6 +514,39 @@ async function onPrompt(button: HTMLButtonElement): Promise<void> {
     const res = await app.sendMessage({ role: "user", content: [{ type: "text", text: promptText(kind) }] });
     if (res?.isError) throw new Error("The host did not accept the message.");
     showNotice(`${L.sent}: ${L[kind]}`);
+  } catch (err) {
+    showError(`${L.error}: ${errorMessage(err)}`);
+  } finally {
+    setBusy(button, false);
+  }
+}
+
+// ---------- Add to chat ----------
+
+// Fetch the whole track as TXT paragraphs and put it in the model's context, so later questions in the
+// conversation can use it without another tool call. Hosts without updateModelContext get a user message.
+async function onAddToChat(): Promise<void> {
+  const t = currentTrack();
+  if (!t || !data) return;
+  const button = $<HTMLButtonElement>("btn-addchat");
+  clearError();
+  setBusy(button, true, L.loading);
+  try {
+    const result = await app.callServerTool({
+      name: "get_subtitles",
+      arguments: subtitleArgs({ fmt: "txt", layout: "paragraphs", attach: false, max_chars: 200000 }),
+    });
+    if (result.isError) throw new Error(textOf(result) || L.error);
+    const text = textOf(result);
+    if (!text) throw new Error("get_subtitles returned no text.");
+    if (app.getHostCapabilities()?.updateModelContext) {
+      await app.updateModelContext({ content: [{ type: "text", text }] });
+    } else {
+      const message = `Here are the subtitles of '${data.video.title}' (${t.lang}) for reference in this conversation:\n\n${text}`;
+      const res = await app.sendMessage({ role: "user", content: [{ type: "text", text: message }] });
+      if (res?.isError) throw new Error("The host did not accept the message.");
+    }
+    showNotice(L.addedToChat);
   } catch (err) {
     showError(`${L.error}: ${errorMessage(err)}`);
   } finally {
@@ -523,10 +570,11 @@ function wire(): void {
   $("btn-download").addEventListener("click", () => void onDownload());
   $("btn-preview").addEventListener("click", () => void onPreview());
   $("btn-copy").addEventListener("click", () => void onCopy());
-  for (const id of ["btn-summarize", "btn-translate", "btn-keypoints"]) {
+  for (const id of PROMPT_BUTTONS) {
     const b = $<HTMLButtonElement>(id);
     b.addEventListener("click", () => void onPrompt(b));
   }
+  $("btn-addchat").addEventListener("click", () => void onAddToChat());
   $("btn-web").addEventListener("click", () => void open(data?.base_url ?? ""));
   for (const id of ["title-link", "thumb-link", "download-url"]) {
     $<HTMLAnchorElement>(id).addEventListener("click", (e) => {

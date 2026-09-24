@@ -34,7 +34,8 @@ def label_sets() -> dict:
         "keypoints": "Key points", "copy": "Copy", "copied": "Copied", "openWeb": "Open web app",
         "selected": "Selected", "downloading": "Preparing file...",
         "downloadReady": "If the download did not start, open this link:", "loading": "Loading...",
-        "error": "Something went wrong",
+        "error": "Something went wrong", "report": "Summary report (.md)", "addToChat": "Add to chat",
+        "addedToChat": "Subtitles added to the chat context.",
     }
     ko = {
         "subtitles": "자막", "format": "파일 형식", "layout": "텍스트 줄 정돈", "paragraphs": "문단",
@@ -42,7 +43,8 @@ def label_sets() -> dict:
         "preview": "미리 보기", "summarize": "요약", "translate": "한국어로 번역", "keypoints": "핵심 정리",
         "copy": "복사", "copied": "복사됨", "openWeb": "웹앱 열기", "selected": "선택됨",
         "downloading": "파일 준비 중...", "downloadReady": "다운로드가 시작되지 않으면 이 링크를 여세요:",
-        "loading": "불러오는 중...", "error": "오류가 발생했습니다",
+        "loading": "불러오는 중...", "error": "오류가 발생했습니다", "report": "요약 보고서 (.md)",
+        "addToChat": "채팅에 넣기", "addedToChat": "자막을 채팅 맥락에 넣었습니다.",
     }
     return {"en": en, "ko": ko}
 
@@ -133,7 +135,7 @@ window.addEventListener('message', (e) => {
       reply(m.id, {
         protocolVersion: m.params.protocolVersion,
         hostInfo: { name: 'smoke-harness', version: '1.0.0' },
-        hostCapabilities: { openLinks: {}, downloadFile: {}, serverTools: {}, message: {} },
+        hostCapabilities: window.HOST_CAPS,
         hostContext: window.HOST_CONTEXT,
       });
       break;
@@ -160,6 +162,7 @@ window.addEventListener('message', (e) => {
     }
     case 'ui/download-file':
     case 'ui/message':
+    case 'ui/update-model-context':
     case 'ui/open-link':
       reply(m.id, {});
       break;
@@ -175,7 +178,11 @@ def js_literal(value) -> str:
     return json.dumps(value).replace("</", "<\\/")
 
 
-def harness_html(menu_html: str, theme: str, locale: str, width: int, result: dict | None = None) -> str:
+HOST_CAPS = {"openLinks": {}, "downloadFile": {}, "serverTools": {}, "message": {}, "updateModelContext": {"text": {}}}
+
+
+def harness_html(menu_html: str, theme: str, locale: str, width: int, result: dict | None = None,
+                 caps: dict | None = None) -> str:
     # Mimic a host CSP inside the view: no eval, no external scripts, images only from YouTube's CDN.
     csp = (
         "<meta http-equiv=\"Content-Security-Policy\" content=\"default-src 'none'; script-src 'unsafe-inline'; "
@@ -192,6 +199,7 @@ def harness_html(menu_html: str, theme: str, locale: str, width: int, result: di
         f"<iframe id='view' sandbox='allow-scripts' title='menu'></iframe>"
         "<script>"
         f"window.HOST_CONTEXT={js_literal(ctx)};window.TOOL_RESULT={js_literal(result or SAMPLE_RESULT)};"
+        f"window.HOST_CAPS={js_literal(HOST_CAPS if caps is None else caps)};"
         + HOST_JS
         + f"document.getElementById('view').srcdoc={js_literal(view)};"
         "</script></body></html>"
@@ -216,14 +224,15 @@ THUMB_SVG = (
 
 
 class Run:
-    def __init__(self, page, theme: str, locale: str, width: int, result: dict | None = None, ready: str = "#menu"):
+    def __init__(self, page, theme: str, locale: str, width: int, result: dict | None = None, ready: str = "#menu",
+                 caps: dict | None = None):
         self.page = page
         self.errors: list[str] = []
         page.on("console", lambda m: self.errors.append(f"console.{m.type}: {m.text}") if m.type == "error" else None)
         page.on("pageerror", lambda e: self.errors.append(f"pageerror: {e}"))
         page.route("https://i.ytimg.com/**", lambda r: r.fulfill(status=200, content_type="image/svg+xml", body=THUMB_SVG))
         page.set_viewport_size({"width": width + 32, "height": 900})
-        page.set_content(harness_html(MENU.read_text(encoding="utf-8"), theme, locale, width, result))
+        page.set_content(harness_html(MENU.read_text(encoding="utf-8"), theme, locale, width, result, caps))
         self.frame = page.frame_locator("#view")
         self.frame.locator(ready).wait_for(state="visible", timeout=10000)
 
@@ -305,6 +314,34 @@ def dark_korean(browser, shots: Path) -> None:
           "Summarize sends ui/message role user")
     check("user_confirmed=true" in text, "Summarize prompt asks for user_confirmed=true")
     f.locator("#notice").wait_for(state="visible")
+
+    check(f.locator("#btn-report").inner_text().strip() == "요약 보고서 (.md)", "Korean report label")
+    f.locator("#btn-report").click()
+    run.wait_for_method("ui/message", 2)
+    msg = [m for m in run.log() if m.get("method") == "ui/message"][-1]
+    text = msg["params"]["content"][0]["text"]
+    check(msg["params"]["role"] == "user" and "get_subtitles" in text and ".md" in text,
+          "Summary report sends ui/message with get_subtitles and .md")
+    check("user_confirmed=true" in text and "Korean" in text and "not the transcript" in text,
+          "Summary report prompt: user_confirmed, user's language, own writing")
+
+    check(f.locator("#btn-addchat").inner_text().strip() == "채팅에 넣기", "Korean Add to chat label")
+    calls_before = len([m for m in run.log() if m.get("method") == "tools/call"])
+    f.locator("#btn-addchat").click()
+    run.wait_for_method("ui/update-model-context")
+    calls = [m for m in run.log() if m.get("method") == "tools/call"]
+    check(len(calls) == calls_before + 1, "Add to chat makes one tools/call")
+    a = calls[-1]["params"]["arguments"]
+    check(calls[-1]["params"]["name"] == "get_subtitles" and a["user_confirmed"] is True and a["attach"] is False
+          and a["max_chars"] == 200000 and (a["fmt"], a["layout"]) == ("txt", "paragraphs"),
+          "Add to chat calls get_subtitles as TXT paragraphs with user_confirmed true")
+    seq = [m for m in run.methods() if m in ("tools/call", "ui/update-model-context")]
+    check(seq[-2:] == ["tools/call", "ui/update-model-context"], "Add to chat: tools/call then ui/update-model-context")
+    ctx = next(m for m in run.log() if m.get("method") == "ui/update-model-context")
+    check(ctx["params"]["content"][0]["text"].startswith("Green growth"), "model context carries the subtitle text")
+    check(len([m for m in run.log() if m.get("method") == "ui/message"]) == 2, "Add to chat sends no ui/message")
+    f.locator("#notice").get_by_text("자막을 채팅 맥락에 넣었습니다.").wait_for(state="visible")
+    passed.append("Add to chat shows the Korean confirmation")
     check(not run.errors, "no console errors (dark, ko-KR)")
     page.close()
 
@@ -333,12 +370,35 @@ def light_english(browser, shots: Path) -> None:
     page.close()
 
 
-def narrow(browser) -> None:
+def add_to_chat_fallback(browser) -> None:
+    page = browser.new_page()
+    caps = {k: v for k, v in HOST_CAPS.items() if k != "updateModelContext"}
+    run = Run(page, "light", "en-US", 400, caps=caps)
+    f = run.frame
+    f.locator("#btn-addchat").click()
+    run.wait_for_method("ui/message")
+    check("ui/update-model-context" not in run.methods(), "no ui/update-model-context without the capability")
+    msg = next(m for m in run.log() if m.get("method") == "ui/message")
+    text = msg["params"]["content"][0]["text"]
+    check(msg["params"]["role"] == "user"
+          and text.startswith(f"Here are the subtitles of '{TITLE}' (en) for reference in this conversation:\n\nGreen growth"),
+          "Add to chat falls back to ui/message with the subtitle text")
+    f.locator("#notice").get_by_text("Subtitles added to the chat context.").wait_for(state="visible")
+    passed.append("Add to chat fallback shows the confirmation")
+    check(not run.errors, "no console errors (Add to chat fallback)")
+    page.close()
+
+
+def narrow(browser, shots: Path) -> None:
     page = browser.new_page()
     run = Run(page, "light", "ko-KR", 360)
     run.settle()
     sw, cw = run.frame.locator("html").evaluate("(e) => [e.scrollWidth, e.clientWidth]")
     check(sw <= cw, "no horizontal scroll at 360px")
+    boxes = run.frame.locator(".actions .btn:visible").evaluate_all(
+        "(bs) => bs.map((b) => { const r = b.getBoundingClientRect(); return [r.left, r.right]; })")
+    check(all(left >= 0 and right <= cw for left, right in boxes), "action buttons fit inside 360px")
+    page.locator("#view").screenshot(path=str(shots / "menu-360-light-ko.png"))
     check(not run.errors, "no console errors (360px)")
     page.close()
 
@@ -362,7 +422,8 @@ def main() -> None:
         try:
             dark_korean(browser, shots)
             light_english(browser, shots)
-            narrow(browser)
+            add_to_chat_fallback(browser)
+            narrow(browser, shots)
             tool_error(browser)
         finally:
             browser.close()

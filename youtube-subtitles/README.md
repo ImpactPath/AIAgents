@@ -101,6 +101,9 @@ a download, which track and format. An explicit request such as "summarize this 
 after changing the view sources in `ui/`, rebuild it with `cd ui && npm install && npm run build`
 (Node 22). If the file is missing, the server logs a warning and serves a placeholder page.
 
+- **Summary report (.md)** asks Claude to fetch the subtitles and write its own structured summary (overview, key arguments, paraphrased quotes, timeline, takeaways) as a downloadable Markdown file named after the video, plus a three-line summary in the chat.
+- **Add to chat** fetches the selected track as TXT paragraphs and puts it in the model's context (`ui/update-model-context`, or a user message on hosts without it), so later questions can use it without another tool call.
+
 The server enforces that flow: `get_subtitles` and `get_download_link` return an error unless the call
 passes `user_confirmed: true` (set only once the user picked an action in the menu, answered the questions, or
 asked explicitly) and `get_video_info` was already called for that video in the same MCP session, so a
