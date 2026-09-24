@@ -297,14 +297,19 @@
                 <div class="flex flex-col sm:flex-row gap-2">
                     <div class="relative sm:flex-1 min-w-0">
                         <input id="url-input" name="url" type="text" inputmode="url" autocomplete="off" autocapitalize="off" spellcheck="false"
-                            class="field h-10 pl-3 pr-10 min-w-0"
+                            class="field h-10 pl-3 pr-20 min-w-0"
                             placeholder="https://www.youtube.com/watch?v=..."
                             aria-describedby="url-error">
-                        <!-- Copy the link in the input (type="button" so Enter still submits the form) -->
-                        <button id="url-copy-btn" type="button" class="btn btn-ghost btn-icon input-copy absolute right-1 top-1" data-i18n-aria-label="copyLink" aria-label="Copy link" data-i18n-title="copyLink" title="Copy link" disabled>
+                        <!-- Paste and copy buttons inside the input (type="button" so Enter still submits the form) -->
+                        <div class="absolute right-1 top-1 flex items-center gap-0.5">
+                        <button id="url-paste-btn" type="button" class="btn btn-ghost btn-icon input-copy" data-i18n-aria-label="pasteLink" aria-label="Paste link" data-i18n-title="pasteLink" title="Paste link">
+                            <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true"><rect x="8" y="2" width="8" height="4" rx="1" stroke-width="2"></rect><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 4H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2M16 4h2a2 2 0 0 1 2 2v2M11 14h10m-4-4 4 4-4 4"></path></svg>
+                        </button>
+                        <button id="url-copy-btn" type="button" class="btn btn-ghost btn-icon input-copy" data-i18n-aria-label="copyLink" aria-label="Copy link" data-i18n-title="copyLink" title="Copy link" disabled>
                             <svg id="url-copy-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true"><rect x="9" y="9" width="12" height="12" rx="2" stroke-width="2"></rect><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
                             <svg id="url-copied-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true" style="display:none"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 6 9 17l-5-5"></path></svg>
                         </button>
+                        </div>
                     </div>
                     <button id="fetch-btn" type="submit" class="btn btn-default btn-lg px-4">
                         <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true"><circle cx="11" cy="11" r="7" stroke-width="2"></circle><path stroke-linecap="round" stroke-width="2" d="m20 20-3.5-3.5"></path></svg>
@@ -312,6 +317,7 @@
                     </button>
                 </div>
                 <p id="url-error" class="field-error text-sm font-medium mt-2" hidden></p>
+                <p id="url-paste-hint" class="text-xs text-muted-foreground mt-2" hidden></p>
             </form>
 
             <!-- Loading status (announced). The skeleton reuses the #status-spinner id that setLoading() toggles. -->
@@ -546,6 +552,9 @@
                 copyTitle: 'Copies the full subtitle text',
                 copyLink: 'Copy link',
                 linkCopied: 'Link copied',
+                pasteLink: 'Paste link',
+                linkPasted: 'Link pasted',
+                pasteHint: 'Press Cmd+V or Ctrl+V to paste',
                 foundTracks: 'Found {n} subtitle tracks.',
                 previewReady: 'Preview loaded.',
                 downloadStarted: 'Download started.',
@@ -597,6 +606,9 @@
                 copyTitle: '자막 전체를 복사합니다',
                 copyLink: '링크 복사',
                 linkCopied: '링크를 복사했습니다',
+                pasteLink: '링크 붙여넣기',
+                linkPasted: '링크를 붙여넣었습니다',
+                pasteHint: 'Cmd+V 또는 Ctrl+V로 붙여넣으세요',
                 foundTracks: '자막 트랙 {n}개를 찾았습니다.',
                 previewReady: '미리 보기를 불러왔습니다.',
                 downloadStarted: '다운로드를 시작했습니다.',
@@ -1232,6 +1244,36 @@
             urlCopyTimer = setTimeout(() => showUrlCopied(false), 1500);
         });
         els.input.addEventListener('paste', () => { setTimeout(syncUrlCopy, 0); });
+
+        // ---------------- Paste link (button inside the URL input) ----------------
+        const urlPasteBtn = $('url-paste-btn');
+        const urlPasteHint = $('url-paste-hint');
+        let pasteHintTimer = null;
+        function showPasteHint() {
+            // Clipboard read is unavailable or was denied: let the user paste with the keyboard.
+            els.input.focus();
+            els.input.select();
+            urlPasteHint.textContent = t('pasteHint');
+            urlPasteHint.hidden = false;
+            announce(t('pasteHint'));
+            clearTimeout(pasteHintTimer);
+            pasteHintTimer = setTimeout(() => { urlPasteHint.hidden = true; }, 3000);
+        }
+        urlPasteBtn.addEventListener('click', async () => {
+            let text = '';
+            if (navigator.clipboard && typeof navigator.clipboard.readText === 'function') {
+                try { text = (await navigator.clipboard.readText() || '').trim(); } catch (e) { text = ''; }
+            }
+            if (!text) { showPasteHint(); return; }
+            clearTimeout(pasteHintTimer);
+            urlPasteHint.hidden = true;
+            els.input.value = text;
+            // Same path as a native paste: input listeners (clear error, enable copy), then the paste
+            // listeners (auto-fetch when it is a YouTube link).
+            els.input.dispatchEvent(new Event('input', { bubbles: true }));
+            els.input.dispatchEvent(new Event('paste', { bubbles: true }));
+            announce(t('linkPasted'));
+        });
         els.input.addEventListener('paste', () => {
             // Wait for the pasted text to land in the input, then auto-fetch if it is a YouTube link.
             setTimeout(() => {
