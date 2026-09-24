@@ -1,6 +1,6 @@
 // View for the get_video_info tool (MCP Apps). Bundled by build.mjs into ../app/ui/menu.html.
 import { App } from "@modelcontextprotocol/ext-apps";
-import type { McpUiHostContext } from "@modelcontextprotocol/ext-apps";
+import type { McpUiDisplayMode, McpUiHostContext } from "@modelcontextprotocol/ext-apps";
 import type { CallToolResult } from "@modelcontextprotocol/client";
 
 // ---------- Contract (structuredContent of get_video_info) ----------
@@ -48,6 +48,7 @@ const FALLBACK: Record<"en" | "ko", Labels> = {
     copyHint: "Copy is blocked here. The text is selected: press Ctrl+C (Cmd+C on Mac).",
     noLink: "The server did not provide a download link.", dismiss: "Dismiss", noTracks: "This video has no downloadable subtitles.",
     report: "Summary report (.md)", addToChat: "Add to chat", addedToChat: "Subtitles added to the chat context.",
+    expand: "Expand", collapse: "Back to chat size",
   },
   ko: {
     subtitles: "자막", format: "파일 형식", layout: "텍스트 줄 정돈",
@@ -60,6 +61,7 @@ const FALLBACK: Record<"en" | "ko", Labels> = {
     copyHint: "여기서는 복사가 막혀 있습니다. 텍스트가 선택되어 있으니 Ctrl+C (Mac은 Cmd+C)를 누르세요.",
     noLink: "서버가 다운로드 링크를 제공하지 않았습니다.", dismiss: "닫기", noTracks: "이 영상에는 내려받을 수 있는 자막이 없습니다.",
     report: "요약 보고서 (.md)", addToChat: "채팅에 넣기", addedToChat: "자막을 채팅 맥락에 넣었습니다.",
+    expand: "크게 보기", collapse: "채팅 크기로",
   },
 };
 
@@ -117,6 +119,37 @@ function applyTheme(ctx?: Partial<McpUiHostContext>): void {
   document.documentElement.dataset.theme = dark ? "dark" : "light";
   const locale = ctx?.locale ?? hostContext()?.locale;
   if (locale) setLanguage(locale);
+  applyDisplayMode(ctx);
+}
+
+// ---------- Display mode ----------
+// Hosts that can show the app full screen list it in availableDisplayModes; only then is the expand
+// button shown. Claude Desktop renders the menu inline in the chat; it cannot become an artifact.
+
+let displayMode: McpUiDisplayMode = "inline";
+
+function applyDisplayMode(ctx?: Partial<McpUiHostContext>): void {
+  const modes = ctx?.availableDisplayModes ?? hostContext()?.availableDisplayModes ?? [];
+  displayMode = ctx?.displayMode ?? hostContext()?.displayMode ?? displayMode;
+  document.documentElement.dataset.display = displayMode;
+  const btn = $<HTMLButtonElement>("btn-expand");
+  btn.hidden = !modes.includes("fullscreen");
+  const full = displayMode === "fullscreen";
+  btn.querySelector<SVGElement>(".icon-expand")!.hidden = full;
+  btn.querySelector<SVGElement>(".icon-collapse")!.hidden = !full;
+  const label = full ? L.collapse : L.expand;
+  btn.setAttribute("aria-label", label);
+  btn.title = label;
+}
+
+async function onToggleDisplayMode(): Promise<void> {
+  const mode: McpUiDisplayMode = displayMode === "fullscreen" ? "inline" : "fullscreen";
+  try {
+    const result = await app.requestDisplayMode({ mode });
+    applyDisplayMode({ displayMode: result.mode });
+  } catch (err) {
+    showError(`${L.error}: ${errorMessage(err)}`);
+  }
 }
 
 function setLanguage(locale: string): void {
@@ -127,6 +160,7 @@ function setLanguage(locale: string): void {
   L = { ...FALLBACK[next], ...(data?.labels?.[next] ?? {}) };
   $("loading-text").textContent = L.loading;
   $("alert-close").setAttribute("aria-label", L.dismiss);
+  if (changed) applyDisplayMode();
   if (data && changed) renderMenu();
 }
 
@@ -571,6 +605,7 @@ function wire(): void {
     b.addEventListener("click", () => void onPrompt(b));
   }
   $("btn-addchat").addEventListener("click", () => void onAddToChat());
+  $("btn-expand").addEventListener("click", () => void onToggleDisplayMode());
   $("btn-web").addEventListener("click", () => void open(data?.base_url ?? ""));
   for (const id of ["title-link", "thumb-link", "download-url"]) {
     $<HTMLAnchorElement>(id).addEventListener("click", (e) => {

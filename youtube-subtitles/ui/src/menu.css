@@ -186,6 +186,11 @@ p { margin: 0; }
 .btn-outline[aria-expanded="true"] { background-color: hsl(var(--accent)); }
 .btn-ghost { color: hsl(var(--foreground)); }
 .btn-icon { padding: 0; }
+.btn-expand { flex: none; width: 28px; height: 28px; margin-left: 4px; color: hsl(var(--muted-foreground)); }
+.btn-expand:hover { color: hsl(var(--foreground)); }
+.btn-expand svg { width: 16px; height: 16px; }
+html[data-display="fullscreen"] .panel { max-width: 720px; margin: 0 auto; padding: 24px 16px; }
+html[data-display="fullscreen"] .preview-text { max-height: 60vh; }
 .btn-sm { height: 28px; padding: 0 10px; font-size: 12px; }
 .btn-link { height: 28px; padding: 0 4px; margin-left: auto; color: hsl(var(--muted-foreground)); font-size: 12px; text-underline-offset: 3px; }
 .btn-link:hover { color: hsl(var(--foreground)); text-decoration: underline; }

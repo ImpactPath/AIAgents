@@ -586,7 +586,7 @@ def test_get_video_info_for_apps_client(client, info_holder, monkeypatch):
         "&header=1"
     )
     en, ko = data["labels"]["en"], data["labels"]["ko"]
-    assert set(en) == set(ko) and len(en) == 24
+    assert set(en) == set(ko) and len(en) == 26
     assert (en["report"], ko["addToChat"]) == ("Summary report (.md)", "\ucc44\ud305\uc5d0 \ub123\uae30")
     assert (en["download"], ko["download"]) == ("Download", "\ub2e4\uc6b4\ub85c\ub4dc")
     assert (en["layout"], ko["translate"]) == ("Text layout", "\ud55c\uad6d\uc5b4\ub85c \ubc88\uc5ed")

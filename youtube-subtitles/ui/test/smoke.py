@@ -160,6 +160,9 @@ window.addEventListener('message', (e) => {
       setTimeout(() => reply(m.id, { content }), 150);
       break;
     }
+    case 'ui/request-display-mode':
+      reply(m.id, { mode: m.params.mode });
+      break;
     case 'ui/download-file':
     case 'ui/message':
     case 'ui/update-model-context':
@@ -182,7 +185,7 @@ HOST_CAPS = {"openLinks": {}, "downloadFile": {}, "serverTools": {}, "message": 
 
 
 def harness_html(menu_html: str, theme: str, locale: str, width: int, result: dict | None = None,
-                 caps: dict | None = None) -> str:
+                 caps: dict | None = None, ctx_extra: dict | None = None) -> str:
     # Mimic a host CSP inside the view: no eval, no external scripts, images only from YouTube's CDN.
     csp = (
         "<meta http-equiv=\"Content-Security-Policy\" content=\"default-src 'none'; script-src 'unsafe-inline'; "
@@ -190,7 +193,7 @@ def harness_html(menu_html: str, theme: str, locale: str, width: int, result: di
     )
     view = menu_html.replace("<head>", "<head>" + csp, 1)
     host_bg = "#262624" if theme == "dark" else "#f5f4ef"
-    ctx = {"theme": theme, "locale": locale, "displayMode": "inline", "platform": "web"}
+    ctx = {"theme": theme, "locale": locale, "displayMode": "inline", "platform": "web", **(ctx_extra or {})}
     return (
         "<!DOCTYPE html><html><head><meta charset='utf-8'><style>"
         f"body{{margin:0;padding:16px;background:{host_bg}}}"
@@ -225,14 +228,14 @@ THUMB_SVG = (
 
 class Run:
     def __init__(self, page, theme: str, locale: str, width: int, result: dict | None = None, ready: str = "#menu",
-                 caps: dict | None = None):
+                 caps: dict | None = None, ctx_extra: dict | None = None):
         self.page = page
         self.errors: list[str] = []
         page.on("console", lambda m: self.errors.append(f"console.{m.type}: {m.text}") if m.type == "error" else None)
         page.on("pageerror", lambda e: self.errors.append(f"pageerror: {e}"))
         page.route("https://i.ytimg.com/**", lambda r: r.fulfill(status=200, content_type="image/svg+xml", body=THUMB_SVG))
         page.set_viewport_size({"width": width + 32, "height": 900})
-        page.set_content(harness_html(MENU.read_text(encoding="utf-8"), theme, locale, width, result, caps))
+        page.set_content(harness_html(MENU.read_text(encoding="utf-8"), theme, locale, width, result, caps, ctx_extra))
         self.frame = page.frame_locator("#view")
         self.frame.locator(ready).wait_for(state="visible", timeout=10000)
 
@@ -403,6 +406,35 @@ def narrow(browser, shots: Path) -> None:
     page.close()
 
 
+def display_modes(browser, shots: Path) -> None:
+    # Without fullscreen in availableDisplayModes (Claude Desktop today) the expand button never shows.
+    page = browser.new_page()
+    run = Run(page, "light", "en-US", 400)
+    check(not run.frame.locator("#btn-expand").is_visible(), "expand button hidden when the host offers no fullscreen")
+    page.close()
+
+    page = browser.new_page()
+    run = Run(page, "light", "ko-KR", 400, ctx_extra={"availableDisplayModes": ["inline", "fullscreen"]})
+    f = run.frame
+    btn = f.locator("#btn-expand")
+    btn.wait_for(state="visible")
+    check(btn.get_attribute("aria-label") == "크게 보기", "expand button shown with a Korean label when fullscreen is offered")
+    btn.click()
+    run.wait_for_method("ui/request-display-mode")
+    req = [m for m in run.log() if m.get("method") == "ui/request-display-mode"][-1]
+    check(req["params"] == {"mode": "fullscreen"}, "expand requests the fullscreen display mode")
+    f.locator("html[data-display='fullscreen']").wait_for(state="attached")  # the sandboxed frame is opaque to the parent
+    check(btn.get_attribute("aria-label") == "채팅 크기로", "button flips to collapse after the host grants fullscreen")
+    run.settle()
+    page.locator("#view").screenshot(path=str(shots / "menu-400-fullscreen-ko.png"))
+    btn.click()
+    run.wait_for_method("ui/request-display-mode", 2)
+    req = [m for m in run.log() if m.get("method") == "ui/request-display-mode"][-1]
+    check(req["params"] == {"mode": "inline"}, "collapse requests the inline display mode")
+    check(not run.errors, "no console errors (display modes)")
+    page.close()
+
+
 def tool_error(browser) -> None:
     page = browser.new_page()
     result = {"isError": True, "content": [{"type": "text", "text": "Video unavailable: dQw4w9WgXcQ"}]}
@@ -424,6 +456,7 @@ def main() -> None:
             light_english(browser, shots)
             add_to_chat_fallback(browser)
             narrow(browser, shots)
+            display_modes(browser, shots)
             tool_error(browser)
         finally:
             browser.close()

@@ -130,6 +130,7 @@ MENU_LABELS = {
         "loading": "Loading...", "error": "Something went wrong",
         "report": "Summary report (.md)", "addToChat": "Add to chat",
         "addedToChat": "Subtitles added to the chat context.",
+        "expand": "Expand", "collapse": "Back to chat size",
     },
     "ko": {
         "subtitles": "자막", "format": "파일 형식", "layout": "텍스트 줄 정돈",
@@ -142,6 +143,7 @@ MENU_LABELS = {
         "loading": "불러오는 중...", "error": "오류가 발생했습니다",
         "report": "요약 보고서 (.md)", "addToChat": "채팅에 넣기",
         "addedToChat": "자막을 채팅 맥락에 넣었습니다.",
+        "expand": "크게 보기", "collapse": "채팅 크기로",
     },
 }
 

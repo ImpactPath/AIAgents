@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+from collections import OrderedDict
 import os
 import re
 import tempfile
@@ -441,6 +442,32 @@ _cache_lock = threading.Lock()
 def clear_cache() -> None:
     with _cache_lock:
         _cache.clear()
+        _subtitle_cache.clear()
+
+
+# Raw caption text per track URL, so a second action on the same track (preview, then download, then a
+# summary prompt) does not download it from YouTube again. Same TTL as the video info that holds the URLs.
+SUBTITLE_CACHE_MAX_ENTRIES = 64
+_subtitle_cache: OrderedDict[str, tuple[float, str]] = OrderedDict()
+
+
+def _subtitle_cache_get(url: str) -> str | None:
+    with _cache_lock:
+        hit = _subtitle_cache.get(url)
+        if hit and hit[0] > time.monotonic():
+            return hit[1]
+        _subtitle_cache.pop(url, None)
+        return None
+
+
+def _subtitle_cache_put(url: str, text: str) -> None:
+    now = time.monotonic()
+    with _cache_lock:
+        for key in [k for k, (exp, _) in _subtitle_cache.items() if exp <= now]:
+            del _subtitle_cache[key]
+        while len(_subtitle_cache) >= SUBTITLE_CACHE_MAX_ENTRIES:
+            del _subtitle_cache[next(iter(_subtitle_cache))]
+        _subtitle_cache[url] = (now + CACHE_TTL_SECONDS, text)
 
 
 def _cache_get(video_id: str) -> VideoInfo | None:
@@ -533,7 +560,11 @@ def fetch_subtitle_text(track: Track) -> str:
     """Download a caption file through yt-dlp so its headers, proxy, and cookies apply (blocking).
 
     HTTP 429 is retried after each delay in RETRY_DELAYS_429; other errors fail at once.
+    Successful downloads are cached for CACHE_TTL_SECONDS per caption URL.
     """
+    cached = _subtitle_cache_get(track.url)
+    if cached is not None:
+        return cached
     delays = list(RETRY_DELAYS_429)
     while True:
         try:
@@ -548,4 +579,6 @@ def fetch_subtitle_text(track: Track) -> str:
             time.sleep(delays.pop(0))
     if len(data) > MAX_SUBTITLE_BYTES:
         raise YoutubeError("Subtitle file is too large.")
-    return data.decode("utf-8", "replace")
+    text = data.decode("utf-8", "replace")
+    _subtitle_cache_put(track.url, text)
+    return text

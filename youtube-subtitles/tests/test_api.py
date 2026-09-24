@@ -445,6 +445,7 @@ def no_sleep(monkeypatch):
 
 
 def _flaky(monkeypatch, errors):
+    youtube.clear_cache()  # cached caption text would short-circuit the download under test
     calls = []
 
     def download(url):
@@ -470,6 +471,26 @@ def test_subtitle_429_gives_up_after_four_attempts(monkeypatch, no_sleep, transl
         youtube.fetch_subtitle_text(Track("ko", "Korean", True, "u", translated=translated))
     assert len(calls) == 4 and len(no_sleep) == 3
     assert phrase in str(err.value) and "YTDLP_COOKIES_CONTENT" in str(err.value)
+
+
+def test_subtitle_text_cached_per_url(monkeypatch, no_sleep):
+    calls = _flaky(monkeypatch, [])
+    track = Track("en", "English", False, "https://yt/caption?v=1")
+    assert youtube.fetch_subtitle_text(track) == youtube.fetch_subtitle_text(track) == "WEBVTT\n"
+    assert calls == ["https://yt/caption?v=1"]  # the second call served from the cache
+    assert youtube.fetch_subtitle_text(Track("ko", "Korean", True, "https://yt/caption?v=2")) == "WEBVTT\n"
+    assert len(calls) == 2  # a different caption URL is a different entry
+    youtube.clear_cache()
+    youtube.fetch_subtitle_text(track)
+    assert len(calls) == 3  # clear_cache drops caption text too
+
+
+def test_subtitle_failures_are_not_cached(monkeypatch, no_sleep):
+    calls = _flaky(monkeypatch, [Exception("HTTP Error 403: Forbidden")])
+    track = Track("en", "English", False, "https://yt/caption?v=3")
+    with pytest.raises(youtube.YoutubeError, match="403"):
+        youtube.fetch_subtitle_text(track)
+    assert youtube.fetch_subtitle_text(track) == "WEBVTT\n" and len(calls) == 2
 
 
 def test_subtitle_other_errors_do_not_retry(monkeypatch, no_sleep):

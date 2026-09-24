@@ -15,8 +15,9 @@ SRT, VTT, or plain text. The backend is FastAPI plus [yt-dlp](https://github.com
 frontend is a single static HTML page (`static/index.html`) with no build step.
 
 Paste a video URL, pick a manual or auto-generated track, choose a format, and download or preview it.
-Nothing is stored on disk: video info is kept in memory for 10 minutes so the lookup and the download
-share one yt-dlp extraction.
+Nothing is stored on disk: video info and downloaded caption text are kept in memory for 10 minutes, so
+the lookup, a preview, a download, and a summary prompt on the same track share one yt-dlp extraction and
+one caption download.
 
 ## Layout
 
@@ -103,6 +104,8 @@ after changing the view sources in `ui/`, rebuild it with `cd ui && npm install 
 
 - **Summary report (.md)** asks Claude to fetch the subtitles and write its own structured summary (overview, key arguments, paraphrased quotes, timeline, takeaways) as a downloadable Markdown file named after the video, plus a three-line summary in the chat.
 - **Add to chat** fetches the selected track as TXT paragraphs and puts it in the model's context (`ui/update-model-context`, or a user message on hosts without it), so later questions can use it without another tool call.
+- The prompt buttons (Summarize, Translate, Key points, Summary report) fill the chat composer; the user sends the message and Claude then calls `get_subtitles`. The server answers that call from its 10-minute caption cache, so YouTube is not contacted again for a track already previewed or downloaded.
+- An expand button appears in the header only on hosts that list `fullscreen` in `availableDisplayModes`; it toggles between the inline card and the host's full-screen view. The menu is an MCP App rendered by the host and cannot be turned into a Claude artifact.
 
 The server enforces that flow: `get_subtitles` and `get_download_link` return an error unless the call
 passes `user_confirmed: true` (set only once the user picked an action in the menu, answered the questions, or
@@ -254,5 +257,5 @@ does not need cookies at all.
 - Auto-generated captions use "rolling" cues on YouTube. The converter removes the repeated lines, so
   SRT, VTT, and TXT output read as clean, non-overlapping text.
 - TXT `paragraphs` and `sentences` layouts use a simple punctuation heuristic (with a short abbreviation list in `app/convert.py`), so captions without punctuation stay as one long sentence and an unusual abbreviation can occasionally split a sentence early; use `layout=cues` for the raw caption lines.
-- The info cache is per process and in memory. With several workers each keeps its own cache.
+- The info and caption caches are per process and in memory. With several workers each keeps its own cache.
 - Only download subtitles you have the right to use, and respect YouTube's Terms of Service.
