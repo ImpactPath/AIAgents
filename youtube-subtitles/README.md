@@ -123,9 +123,10 @@ that easier to type. The server cannot bypass this rule.
 
 The server enforces that flow: `get_subtitles` and `get_download_link` return an error unless the call
 passes `user_confirmed: true` (set only once the user picked an action in the menu, answered the questions, or
-asked explicitly) and `get_video_info` was already called for that video in the same MCP session, so a
-model that jumps straight to fetching is told to show the menu and ask first. The menu view passes
-`user_confirmed: true` itself; the `subtitles://` resources are not gated.
+asked explicitly) and `get_video_info` was already called for that video (remembered process-wide, not per
+MCP session: on claude.ai in a browser the menu's tool calls arrive on a different session than the model's
+lookup), so a model that jumps straight to fetching is told to show the menu and ask first. The menu view
+passes `user_confirmed: true` itself; the `subtitles://` resources are not gated.
 
 `get_subtitles` also attaches the track as an embedded resource and a resource link named like the download
 file, so clients that support it show a file; pass `attach: false` for the text only.

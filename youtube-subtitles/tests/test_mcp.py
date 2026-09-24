@@ -66,6 +66,9 @@ def info_holder(monkeypatch):
 
 @pytest.fixture
 def client(info_holder):
+    from app import mcp_server
+
+    mcp_server._looked_up.clear()  # the gate is process-wide, so each test starts with no video looked up
     with TestClient(app) as c:
         c.mcp_session = open_session(c)
         yield c
@@ -166,7 +169,7 @@ def test_initialize_and_tools_list(client):
         assert confirmed["type"] == "boolean" and confirmed["default"] is False
         assert confirmed["description"] == USER_CONFIRMED_DESCRIPTION
     assert ("get_subtitles and get_download_link refuse to run until user_confirmed=true and get_video_info was "
-            "called for that video in this session.") in instructions
+            "called for that video.") in instructions
 
 
 def test_mcp_path_without_and_with_trailing_slash(client):
@@ -742,25 +745,24 @@ def test_gated_tool_runs_after_get_video_info_and_confirmation(client, info_hold
 
 
 @pytest.mark.parametrize("tool", ["get_subtitles", "get_download_link"])
-def test_gate_is_per_session(client, tool):
-    assert call(client, "get_video_info", url=VID)["isError"] is False
-    assert call(client, tool, url=VID, user_confirmed=True)["isError"] is False
+def test_gate_is_shared_across_sessions(client, tool):
+    # The menu view on claude.ai in a browser calls tools on another MCP session than the model's lookup.
     second = open_session(client, APPS_CAPABILITY)
-    result = call(client, tool, headers=second, url=VID, user_confirmed=True)
-    assert result["isError"] is True and text_of(result).endswith(": " + NOT_LOOKED_UP)
-    assert call(client, "get_video_info", headers=second, url=VID)["isError"] is False
+    assert text_of(call(client, tool, headers=second, url=VID, user_confirmed=True)).endswith(": " + NOT_LOOKED_UP)
+    assert call(client, "get_video_info", url=VID)["isError"] is False
     assert call(client, tool, headers=second, url=VID, user_confirmed=True)["isError"] is False
+    assert client.delete("/mcp", headers={**HEADERS, **second}).status_code == 200
+    third = open_session(client)
+    assert call(client, tool, headers=third, url=VID, user_confirmed=True)["isError"] is False
 
 
-def test_gate_entry_dropped_when_session_ends(client):
-    from app.mcp_server import _looked_up
+def test_gate_drops_least_recently_looked_up(client, info_holder):
+    from app import mcp_server
 
-    session = open_session(client)
-    key = "http:" + session["Mcp-Session-Id"]
-    assert call(client, "get_video_info", headers=session, url=VID)["isError"] is False
-    assert list(_looked_up[key]) == [VID]
-    assert client.delete("/mcp", headers={**HEADERS, **session}).status_code == 200
-    assert key not in _looked_up
+    mcp_server._looked_up.clear()
+    for i in range(mcp_server.MAX_GATED_VIDEOS + 1):
+        mcp_server._remember_video(f"video{i:06d}")
+    assert len(mcp_server._looked_up) == mcp_server.MAX_GATED_VIDEOS and "video000000" not in mcp_server._looked_up
 
 
 def test_gate_does_not_affect_resources(client):

@@ -60,8 +60,7 @@ INSTRUCTIONS = (
     "works on any device. Machine-translated YouTube captions are rate-limited and hidden; download the "
     "original language and translate the text yourself if another language is needed. get_subtitles also "
     "attaches the file as a resource; tell the user it is attached if the client shows it. get_subtitles and "
-    "get_download_link refuse to run until user_confirmed=true and get_video_info was called for that video "
-    "in this session."
+    "get_download_link refuse to run until user_confirmed=true and get_video_info was called for that video."
 )
 MENU_HINT = (
     "If the interactive subtitle menu is shown, the user picks there: wait for their choice. Otherwise, "
@@ -100,8 +99,7 @@ NOT_CONFIRMED_ERROR = (
 )
 NOT_LOOKED_UP_ERROR = "Call get_video_info for this video first so the user can see the tracks and choose."
 UserConfirmed = Annotated[bool, Field(description=USER_CONFIRMED_DESCRIPTION)]
-MAX_GATED_SESSIONS = 1024  # sessions remembered by the get_video_info gate (least recently used dropped)
-MAX_GATED_VIDEOS = 64  # video ids remembered per session
+MAX_GATED_VIDEOS = 4096  # video ids remembered by the get_video_info gate (least recently used dropped)
 MIME_TYPES = {"txt": "text/plain", "srt": "application/x-subrip", "vtt": "text/vtt"}
 URI_SCHEME = "subtitles://"
 TRACK_URI_PREFIX = URI_SCHEME + "video/"  # constant host: clients may lowercase a URI host, ids are case-sensitive
@@ -268,61 +266,28 @@ def build_http_app() -> Starlette:
     )
 
 
-# Per MCP session: the video ids get_video_info was called for, so get_subtitles and get_download_link can
-# refuse a video the user has not seen the menu for. Keyed by the Mcp-Session-Id the session manager already
-# validated (an unknown id is answered 404 before any tool runs); entries are dropped when the session's
-# connection closes, and the dict is capped as a fallback.
-_looked_up: OrderedDict[str, OrderedDict[str, None]] = OrderedDict()
-LOCAL_SESSION = "local"  # stdio (one client per process), a request without a session id, or a direct call
+# Video ids get_video_info was called for, so get_subtitles and get_download_link can refuse a video the
+# user has not seen the menu for. Process-wide rather than per MCP session: on claude.ai in a browser the
+# menu view's tool calls arrive on a different MCP session than the model's get_video_info call, and a
+# per-session gate refused them. Least recently used ids are dropped past the cap.
+_looked_up: OrderedDict[str, None] = OrderedDict()
 
 
-def _session_key(ctx: Context) -> str:
-    """A stable id for the MCP session carrying this request.
-
-    The SDK builds a new ServerSession per request, so its identity is not stable; the Mcp-Session-Id
-    header (the same value as the connection's session_id) is.
-    """
-    try:
-        request_context = ctx.request_context
-    except (ValueError, RuntimeError):  # no active request (a direct call)
-        return LOCAL_SESSION
-    headers = getattr(request_context.request, "headers", None)
-    session_id = headers.get("mcp-session-id") if headers else None
-    return f"http:{session_id}" if session_id else LOCAL_SESSION
-
-
-def _forget_session(key: str) -> None:
-    _looked_up.pop(key, None)
-
-
-def _remember_video(ctx: Context, video_id: str) -> None:
-    key = _session_key(ctx)
-    videos = _looked_up.get(key)
-    if videos is None:
-        videos = _looked_up[key] = OrderedDict()
-        # Clear the entry when the connection closes (its exit stack unwinds on DELETE, idle timeout or crash).
-        connection = getattr(getattr(ctx, "session", None), "_connection", None) if key != LOCAL_SESSION else None
-        exit_stack = getattr(connection, "exit_stack", None)
-        if exit_stack is not None:
-            exit_stack.callback(_forget_session, key)
-    _looked_up.move_to_end(key)
-    videos[video_id] = None
-    videos.move_to_end(video_id)
-    while len(videos) > MAX_GATED_VIDEOS:
-        videos.popitem(last=False)
-    while len(_looked_up) > MAX_GATED_SESSIONS:
+def _remember_video(video_id: str) -> None:
+    _looked_up[video_id] = None
+    _looked_up.move_to_end(video_id)
+    while len(_looked_up) > MAX_GATED_VIDEOS:
         _looked_up.popitem(last=False)
 
 
-def _require_choice(url: str, ctx: Context, user_confirmed: bool) -> None:
-    """Refuse unless the user chose (user_confirmed) and get_video_info ran for this video in this session."""
+def _require_choice(url: str, user_confirmed: bool) -> None:
+    """Refuse unless the user chose (user_confirmed) and get_video_info ran for this video."""
     if not user_confirmed:
         raise ToolError(NOT_CONFIRMED_ERROR)
     video_id = youtube.parse_video_id(url)
     if not video_id:
         raise ToolError(youtube.INVALID_URL)
-    videos = _looked_up.get(_session_key(ctx))
-    if videos is None or video_id not in videos:
+    if video_id not in _looked_up:
         raise ToolError(NOT_LOOKED_UP_ERROR)
 
 
@@ -448,7 +413,7 @@ async def get_subtitles(
     Machine-translated auto captions (another language than the video's) are rate-limited by YouTube
     (HTTP 429); fetch the original language instead and translate the text yourself.
     """
-    _require_choice(url, ctx, user_confirmed)
+    _require_choice(url, user_confirmed)
     if max_chars < 1:
         raise ToolError("max_chars must be a positive number.")
     info = await _load(url)
@@ -489,7 +454,7 @@ async def get_download_link(
     (default: the recommended track, TXT, paragraphs, with header).
     Returns `download_url`, `web_app_url`, `filename`, `track` ({lang, name, auto}) and `note`.
     """
-    _require_choice(url, ctx, user_confirmed)
+    _require_choice(url, user_confirmed)
     info = await _load(url)
     track = _pick_track(info, (lang or "").strip() or None, auto)
     if fmt != "txt":
@@ -609,7 +574,7 @@ async def get_video_info(url: str, ctx: Context) -> Annotated[CallToolResult, Vi
     the text menu with UNDECLARED_APPS_NOTE, since the host may still render the view.
     """
     info = await _load(url)
-    _remember_video(ctx, info.video_id)
+    _remember_video(info.video_id)
     data = _video_info_data(info, _base_url(ctx))
     apps_support = _apps_support(ctx)
     if apps_support:
