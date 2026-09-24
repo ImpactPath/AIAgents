@@ -67,7 +67,12 @@
     <p id="selected-line" class="selected-line"><span id="selected-label" class="sel-label">Selected</span> <span id="selected-badge" class="badge badge-outline"></span></p>
 
     <div class="actions">
-      <button id="btn-download" type="button" class="btn btn-default">
+      <button id="btn-addchat" type="button" class="btn btn-default">
+        <span class="spinner" aria-hidden="true" hidden></span>
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 5v14m-7-7h14"/></svg>
+        <span class="label" data-label="addToChat">Add to chat</span>
+      </button>
+      <button id="btn-download" type="button" class="btn btn-outline">
         <span class="spinner" aria-hidden="true" hidden></span>
         <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v11m-4.5-4.5L12 15l4.5-4.5M5 20h14"/></svg>
         <span class="label" data-label="download">Download</span>
@@ -92,10 +97,6 @@
       <button id="btn-report" type="button" class="btn btn-outline" data-prompt="report">
         <span class="spinner" aria-hidden="true" hidden></span>
         <span class="label" data-label="report">Summary report (.md)</span>
-      </button>
-      <button id="btn-addchat" type="button" class="btn btn-outline">
-        <span class="spinner" aria-hidden="true" hidden></span>
-        <span class="label" data-label="addToChat">Add to chat</span>
       </button>
       <button id="btn-web" type="button" class="btn btn-link" hidden>
         <span class="label" data-label="openWeb">Open web app</span>

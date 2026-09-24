@@ -92,7 +92,8 @@ would never see a separate menu tool.
 
 `get_video_info` is an MCP App: clients that render MCP Apps (Claude, for example) show an interactive
 menu in the chat with the subtitle tracks, the format (TXT, SRT, VTT), the TXT text layout, and buttons to
-download the file, preview the text, summarize, translate to Korean, or list the key points. The view is
+add the transcript to the chat (first, as the primary action), download the file, preview the text, summarize,
+translate to Korean, or list the key points. The view is
 the `ui://youtube-subtitles/menu.html` resource, served from `app/ui/menu.html`; it may load the video
 thumbnail from `i.ytimg.com`. Its structured result carries both the fields the model reads (title,
 tracks, recommended, options) and the data the view reads (video, formats, layouts, labels, the download
