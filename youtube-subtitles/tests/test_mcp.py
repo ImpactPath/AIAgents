@@ -1,5 +1,10 @@
-"""MCP endpoint tests: raw JSON-RPC over streamable HTTP (stateless, JSON responses), yt-dlp mocked."""
+"""MCP endpoint tests: raw JSON-RPC over streamable HTTP (sessions, JSON responses), yt-dlp mocked.
 
+Every test opens a session like a real client: initialize, read the Mcp-Session-Id response header,
+send notifications/initialized, then pass the header (and MCP-Protocol-Version) on every request.
+"""
+
+import asyncio
 import json
 from urllib.parse import parse_qs, urlsplit
 
@@ -12,6 +17,9 @@ from app.youtube import Track, VideoInfo
 
 VID = "dQw4w9WgXcQ"
 HEADERS = {"Accept": "application/json, text/event-stream", "Content-Type": "application/json"}
+PROTOCOL = "2025-06-18"
+APP_MIME = "text/html;profile=mcp-app"
+APPS_CAPABILITY = {"extensions": {"io.modelcontextprotocol/ui": {"mimeTypes": [APP_MIME]}}}
 
 
 def full_tracks():
@@ -59,18 +67,37 @@ def info_holder(monkeypatch):
 @pytest.fixture
 def client(info_holder):
     with TestClient(app) as c:
+        c.mcp_session = open_session(c)
         yield c
 
 
-def rpc(client, method, params=None, *, id=1, path="/mcp", headers=None, **kwargs):
+def open_session(client, capabilities=None, *, protocol=PROTOCOL, path="/mcp", **kwargs):
+    """initialize, then notifications/initialized; returns the headers to send on the session's requests."""
+    r = client.post(path, json={
+        "jsonrpc": "2.0", "id": 0, "method": "initialize",
+        "params": {"protocolVersion": protocol, "capabilities": capabilities or {},
+                   "clientInfo": {"name": "pytest", "version": "1"}},
+    }, headers=HEADERS, **kwargs)
+    assert r.status_code == 200, r.text
+    session = {"Mcp-Session-Id": r.headers["mcp-session-id"], "MCP-Protocol-Version": protocol}
+    note = client.post(path, json={"jsonrpc": "2.0", "method": "notifications/initialized"},
+                       headers={**HEADERS, **session}, **kwargs)
+    assert note.status_code == 202, note.text
+    return session
+
+
+def rpc(client, method, params=None, *, id=1, path="/mcp", headers=None, session=True, **kwargs):
+    """POST one JSON-RPC request; on the client's session unless it is initialize or session=False."""
     payload = {"jsonrpc": "2.0", "id": id, "method": method}
     if params is not None:
         payload["params"] = params
+    if session and method != "initialize":
+        headers = {**getattr(client, "mcp_session", {}), **(headers or {})}
     return client.post(path, json=payload, headers={**HEADERS, **(headers or {})}, **kwargs)
 
 
-def call(client, name, **arguments):
-    r = rpc(client, "tools/call", {"name": name, "arguments": arguments})
+def call(client, name, *, headers=None, **arguments):
+    r = rpc(client, "tools/call", {"name": name, "arguments": arguments}, headers=headers)
     assert r.status_code == 200, r.text
     return r.json()["result"]
 
@@ -84,16 +111,20 @@ def test_initialize_and_tools_list(client):
         "protocolVersion": "2025-06-18", "capabilities": {}, "clientInfo": {"name": "pytest", "version": "1"},
     })
     assert r.status_code == 200 and r.headers["content-type"].startswith("application/json")
+    session_id = r.headers["mcp-session-id"]
+    assert session_id and session_id != client.mcp_session["Mcp-Session-Id"]
     result = r.json()["result"]
     assert result["serverInfo"]["name"] == "youtube-subtitles"
     instructions = result["instructions"]
-    assert "call get_video_info only" in instructions and "get_download_link" in instructions
+    assert "call subtitle_menu" in instructions and "get_download_link" in instructions
+    assert "text menu: present it and wait" in instructions and "call get_subtitles directly" in instructions
     assert "translate the text yourself" in instructions
-    note = client.post("/mcp", json={"jsonrpc": "2.0", "method": "notifications/initialized"}, headers=HEADERS)
+    note = client.post("/mcp", json={"jsonrpc": "2.0", "method": "notifications/initialized"},
+                       headers={**HEADERS, "Mcp-Session-Id": session_id})
     assert note.status_code == 202
 
     tools = {t["name"]: t for t in rpc(client, "tools/list", id=2).json()["result"]["tools"]}
-    assert set(tools) == {"get_video_info", "get_subtitles", "get_download_link"}
+    assert set(tools) == {"subtitle_menu", "get_video_info", "get_subtitles", "get_download_link"}
     info_tool, subs_tool = tools["get_video_info"], tools["get_subtitles"]
     assert info_tool["inputSchema"]["required"] == ["url"]
     assert {"tracks", "recommended", "original_language", "published"} <= set(info_tool["outputSchema"]["properties"])
@@ -116,7 +147,7 @@ def test_initialize_and_tools_list(client):
 def test_mcp_path_without_and_with_trailing_slash(client):
     for path in ("/mcp", "/mcp/"):
         r = rpc(client, "tools/list", path=path, follow_redirects=False)
-        assert r.status_code == 200 and len(r.json()["result"]["tools"]) == 3
+        assert r.status_code == 200 and len(r.json()["result"]["tools"]) == 4
 
 
 def test_get_video_info_filters_and_orders(client):
@@ -332,7 +363,7 @@ def test_api_key_guard(client, monkeypatch):
         {"path": "/mcp?key=s3cret-key"},
     ):
         r = rpc(client, "tools/list", **kwargs)
-        assert r.status_code == 200 and len(r.json()["result"]["tools"]) == 3, kwargs
+        assert r.status_code == 200 and len(r.json()["result"]["tools"]) == 4, kwargs
     # The rest of the site ignores the key.
     assert client.get("/healthz").status_code == 200
     assert client.get("/api/info", params={"url": "not-a-url"}).status_code == 400
@@ -356,6 +387,7 @@ def test_openapi_servers_and_operation_ids(client, monkeypatch):
 def test_app_can_start_twice(info_holder):
     for _ in range(2):
         with TestClient(app) as c:
+            c.mcp_session = open_session(c)
             assert rpc(c, "tools/list").status_code == 200
 
 
@@ -377,7 +409,9 @@ def test_resources_listed_and_templates(client):
     assert by_uri["subtitles://video/{video_id}/{lang}/{auto}/vtt/{layout}{?header}"]["mimeType"] == "text/vtt"
 
     resources = rpc(client, "resources/list").json()["result"]["resources"]
-    assert [(x["uri"], x["mimeType"]) for x in resources] == [("subtitles://recent", "application/json")]
+    assert [(x["uri"], x["mimeType"]) for x in resources] == [
+        (MENU_URI, APP_MIME), ("subtitles://recent", "application/json"),
+    ]
 
 
 def read_resource(client, uri):
@@ -443,3 +477,168 @@ def test_get_subtitles_attaches_resource_and_link(client, info_holder):
     plain = call(client, "get_subtitles", url=VID, attach=False)
     assert [b["type"] for b in plain["content"]] == ["text"]
     assert plain["content"][0]["text"] == call(client, "get_subtitles", url=VID)["content"][0]["text"]
+
+
+# MCP App: subtitle_menu and its ui:// view.
+
+MENU_URI = "ui://youtube-subtitles/menu.html"
+
+
+def menu_call(client, capabilities, **arguments):
+    """subtitle_menu on a fresh session whose initialize declared `capabilities`."""
+    return call(client, "subtitle_menu", headers=open_session(client, capabilities), **arguments)
+
+
+def test_subtitle_menu_listed_with_ui_resource(client):
+    tools = {t["name"]: t for t in rpc(client, "tools/list").json()["result"]["tools"]}
+    menu = tools["subtitle_menu"]
+    assert menu["_meta"]["ui"]["resourceUri"] == MENU_URI and menu["title"] == "Subtitle menu"
+    assert menu["inputSchema"]["required"] == ["url"] and set(menu["inputSchema"]["properties"]) == {"url"}
+    assert "Call this when the user shares a YouTube link" in menu["description"]
+    assert {"video", "tracks", "recommended", "formats", "layouts", "defaults", "base_url", "download_template",
+            "labels"} <= set(menu["outputSchema"]["properties"])
+    assert "_meta" not in tools["get_subtitles"]
+
+
+def test_menu_resource_read(client):
+    [contents] = read_resource(client, MENU_URI)["result"]["contents"]
+    assert contents["uri"] == MENU_URI and contents["mimeType"] == APP_MIME
+    assert "ui/initialize" in contents["text"] and "<!DOCTYPE" in contents["text"]
+    ui = contents["_meta"]["ui"]
+    assert ui["csp"] == {"resourceDomains": ["https://i.ytimg.com", "https://*.ytimg.com"]}
+    assert ui["permissions"] == {"clipboardWrite": {}} and ui["prefersBorder"] is True
+
+
+def test_subtitle_menu_for_apps_client(client, info_holder, monkeypatch):
+    monkeypatch.setenv("PUBLIC_BASE_URL", "https://host.example/")
+    result = menu_call(client, APPS_CAPABILITY, url=f"https://youtu.be/{VID}")
+    assert result["isError"] is False
+    assert [b["type"] for b in result["content"]] == ["text"]
+    assert text_of(result) == (
+        "Interactive menu shown for 'Never Gonna Give You Up' (6 tracks: en, ko, de, fr, en-orig (auto), "
+        "es-orig (auto)). The user is choosing a track, format and action in the menu. Wait for their choice; "
+        "do not call get_subtitles or get_download_link until the user picks an action or asks explicitly."
+    )
+    data = result["structuredContent"]
+    assert data["video"] == {
+        "video_id": VID, "title": "Never Gonna Give You Up", "channel": "Rick Astley", "duration": "03:32",
+        "duration_seconds": 212, "published": "2009-10-25", "url": f"https://www.youtube.com/watch?v={VID}",
+        "thumbnail": f"https://i.ytimg.com/vi/{VID}/hqdefault.jpg", "original_language": "en",
+    }
+    assert data["tracks"] == [
+        {"lang": "en", "name": "English", "auto": False, "kind": "original"},
+        {"lang": "ko", "name": "Korean", "auto": False, "kind": "original"},
+        {"lang": "de", "name": "German", "auto": False, "kind": "original"},
+        {"lang": "fr", "name": "French", "auto": False, "kind": "original"},
+        {"lang": "en-orig", "name": "English", "auto": True, "kind": "auto"},
+        {"lang": "es-orig", "name": "Spanish", "auto": True, "kind": "auto"},
+    ]
+    assert data["recommended"] == {"lang": "en", "auto": False}
+    assert data["formats"] == [{"id": "txt", "label": "TXT"}, {"id": "srt", "label": "SRT"},
+                               {"id": "vtt", "label": "VTT"}]
+    assert data["layouts"] == [{"id": "paragraphs", "label": "Paragraphs"},
+                               {"id": "sentences", "label": "Sentences"},
+                               {"id": "cues", "label": "Original cues"}]
+    assert data["defaults"] == {"fmt": "txt", "layout": "paragraphs"}
+    assert data["base_url"] == "https://host.example"
+    assert data["download_template"] == (
+        f"https://host.example/api/download?url={VID}&lang={{lang}}&auto={{auto}}&fmt={{fmt}}&layout={{layout}}"
+        "&header=1"
+    )
+    en, ko = data["labels"]["en"], data["labels"]["ko"]
+    assert set(en) == set(ko) and len(en) == 21
+    assert (en["download"], ko["download"]) == ("Download", "\ub2e4\uc6b4\ub85c\ub4dc")
+    assert (en["layout"], ko["translate"]) == ("Text layout", "\ud55c\uad6d\uc5b4\ub85c \ubc88\uc5ed")
+    assert info_holder["fetched"] == []  # the menu never downloads subtitles
+
+    # The template fills into a URL the REST API serves.
+    url = data["download_template"].format(lang="ko", auto="false", fmt="srt", layout="paragraphs")
+    parts = urlsplit(url)
+    r = client.get(f"{parts.path}?{parts.query}")
+    assert r.status_code == 200 and "Line 0 from ko manual." in r.text
+
+
+def test_subtitle_menu_text_menu_for_client_without_apps(client, info_holder):
+    result = menu_call(client, {}, url=VID)
+    assert result["isError"] is False and result["structuredContent"]["base_url"] == "http://testserver"
+    assert text_of(result) == "\n".join([
+        f"Subtitle menu for 'Never Gonna Give You Up' (Rick Astley, 03:32, 2009-10-25): "
+        f"https://www.youtube.com/watch?v={VID}",
+        "",
+        "Tracks (pass lang and auto to get_subtitles or get_download_link):",
+        "1. English, original: lang=en, auto=false (recommended)",
+        "2. Korean, original: lang=ko, auto=false",
+        "3. German, original: lang=de, auto=false",
+        "4. French, original: lang=fr, auto=false",
+        "5. English, auto: lang=en-orig, auto=true",
+        "6. Spanish, auto: lang=es-orig, auto=true",
+        "",
+        "Formats (fmt): TXT (txt), SRT (srt), VTT (vtt); default txt.",
+        "Text layout for TXT (layout): Paragraphs (paragraphs), Sentences (sentences), Original cues (cues); "
+        "default paragraphs.",
+        "Actions: download link (get_download_link), preview the text (get_subtitles), summarize, translate, "
+        "key points.",
+        "",
+        "Ask the user what they want.",
+    ])
+    # A client that lists the extension without the app MIME type cannot render it either.
+    other = {"extensions": {"io.modelcontextprotocol/ui": {"mimeTypes": ["text/html"]}}}
+    assert text_of(menu_call(client, other, url=VID)) == text_of(result)
+
+
+def test_subtitle_menu_without_declared_capabilities(info_holder):
+    """No client capabilities at all (a direct call): the text menu plus a note that the view may be shown."""
+    import anyio
+    from mcp.server.mcpserver import Context
+
+    from app.mcp_server import UNDECLARED_APPS_NOTE, subtitle_menu
+
+    result = anyio.run(lambda: subtitle_menu(VID, Context()))
+    note, _, menu = result.content[0].text.partition("\n\n")
+    assert note == UNDECLARED_APPS_NOTE and "renders MCP Apps" in note
+    assert menu.startswith("Subtitle menu for 'Never Gonna Give You Up'")
+    assert menu.endswith("\nAsk the user what they want.")
+    data = result.structured_content
+    assert data["base_url"] == "" and data["download_template"].startswith(f"/api/download?url={VID}&lang={{lang}}")
+    assert data["tracks"][0] == {"lang": "en", "name": "English", "auto": False, "kind": "original"}
+
+
+def test_session_required_and_delete_ends_it(client):
+    no_session = rpc(client, "tools/call", {"name": "subtitle_menu", "arguments": {"url": VID}}, session=False)
+    assert no_session.status_code == 400 and "Missing session ID" in no_session.json()["error"]["message"]
+    unknown = rpc(client, "tools/list", headers={"Mcp-Session-Id": "not-a-session"})
+    assert unknown.status_code == 404
+
+    session = open_session(client, path="/mcp/")
+    assert rpc(client, "tools/list", headers=session).status_code == 200
+    assert client.delete("/mcp", headers={**HEADERS, **session}).status_code == 200
+    gone = rpc(client, "tools/list", headers=session)
+    assert gone.status_code == 404 and gone.json()["error"]["message"] == "Session not found"
+    assert rpc(client, "tools/list").status_code == 200  # other sessions are unaffected
+
+
+def test_subtitle_menu_fetches_info_in_a_worker_thread(client, info_holder, monkeypatch):
+    seen = []
+
+    def fake_info(vid):
+        try:
+            asyncio.get_running_loop()
+            seen.append("event loop")
+        except RuntimeError:
+            seen.append("worker thread")
+        return make_info([Track("en", "English", True, "a-en")], original=None)
+
+    monkeypatch.setattr(youtube, "fetch_info", fake_info)
+    result = menu_call(client, APPS_CAPABILITY, url=VID)
+    assert seen == ["worker thread"]
+    data = result["structuredContent"]
+    assert data["tracks"] == [{"lang": "en", "name": "English", "auto": True, "kind": "auto"}]
+    assert data["recommended"] == {"lang": "en", "auto": True} and data["video"]["original_language"] is None
+    assert "(1 track: en (auto))" in text_of(result)
+
+
+@pytest.mark.parametrize("url,message", [("not a url", youtube.INVALID_URL), (VID, youtube.NO_SUBTITLES)])
+def test_subtitle_menu_errors(client, info_holder, url, message):
+    info_holder["info"] = make_info(tracks=[])
+    result = menu_call(client, APPS_CAPABILITY, url=url)
+    assert result["isError"] is True and message in text_of(result)

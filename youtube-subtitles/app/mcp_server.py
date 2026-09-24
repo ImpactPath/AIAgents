@@ -1,39 +1,47 @@
-"""MCP server (Model Context Protocol) exposing the subtitle downloader as three tools.
+"""MCP server (Model Context Protocol) exposing the subtitle downloader as four tools.
 
-Mounted by app.main at /mcp (streamable HTTP, stateless, JSON responses), so
+Mounted by app.main at /mcp (streamable HTTP with sessions, JSON responses), so
 Claude and ChatGPT connectors can call it. The tools reuse the same cached
 yt-dlp lookup, track rules, and converter as the REST API. Subtitle tracks are
 also readable as resources (subtitles://...), and get_subtitles attaches the
 track as an embedded resource plus a resource link so clients can show a file.
+subtitle_menu is an MCP App (io.modelcontextprotocol/ui): hosts that render apps
+show the interactive menu at ui://youtube-subtitles/menu.html (built from ui/
+into app/ui/menu.html); other clients get the same menu as text.
 """
 
 from __future__ import annotations
 
 import inspect
 import json
+import logging
 import os
-from typing import Literal
+from pathlib import Path
+from typing import Annotated, Literal
 from urllib.parse import quote, urlencode
 
 import anyio
+from mcp.server.apps import Apps, ResourceCsp, ResourcePermissions, client_supports_apps
 from mcp.server.mcpserver import Context, MCPServer
 from mcp.server.mcpserver.exceptions import ResourceError, ToolError
 from mcp.server.transport_security import TransportSecuritySettings
-from mcp.types import EmbeddedResource, ResourceLink, TextContent, TextResourceContents
+from mcp.types import CallToolResult, EmbeddedResource, ResourceLink, TextContent, TextResourceContents
 from starlette.applications import Starlette
 from typing_extensions import TypedDict  # pydantic needs this TypedDict on Python < 3.12
 
 from app import __version__, youtube
 from app.convert import convert, format_duration
 
+log = logging.getLogger(__name__)
+
 INSTRUCTIONS = (
-    "Fetch YouTube subtitles. When the user shares a YouTube link without saying what they want, call "
-    "get_video_info only, then show a short menu in the user's language and wait: (a) the subtitle tracks, "
-    "recommended first; (b) format TXT, SRT, VTT (default TXT); (c) text layout for TXT: paragraphs "
-    "(default), sentences, cues; (d) what to do: download link, summary, translation, key points. Only call "
-    "get_subtitles or get_download_link after the user chooses, or when the user's request already makes "
-    "the choice clear (for example 'summarize this video' means fetch the recommended track as TXT "
-    "paragraphs and summarize). To give the user a file, call get_download_link and show its download_url "
+    "Fetch YouTube subtitles. When the user shares a YouTube link, call subtitle_menu; it renders an "
+    "interactive menu where the user picks the track, format and action, so do not call get_subtitles or "
+    "get_download_link until they choose or state what they want. If the client cannot render apps, the "
+    "tool returns a text menu: present it and wait. When the user's request is already explicit (e.g. "
+    "'summarize this video'), skip the menu and call get_subtitles directly (the recommended track as TXT "
+    "paragraphs is the default). get_video_info lists the tracks without showing a menu. To give the user "
+    "a file, call get_download_link and show its download_url "
     "as a clickable link; it does not fetch the subtitles. Machine-translated YouTube captions are "
     "rate-limited and hidden; download the original language and translate the text yourself if another "
     "language is needed. get_subtitles also attaches the file as a resource; tell the user it is attached "
@@ -70,12 +78,61 @@ MIME_TYPES = {"txt": "text/plain", "srt": "application/x-subrip", "vtt": "text/v
 URI_SCHEME = "subtitles://"
 TRACK_URI_PREFIX = URI_SCHEME + "video/"  # constant host: clients may lowercase a URI host, ids are case-sensitive
 
-server = MCPServer(
-    name="youtube-subtitles",
-    title="YouTube Subtitle Downloader",
-    version=__version__,
-    instructions=INSTRUCTIONS,
+MENU_URI = "ui://youtube-subtitles/menu.html"
+MENU_HTML_PATH = Path(__file__).resolve().parent / "ui" / "menu.html"
+MENU_PLACEHOLDER_HTML = (
+    "<!DOCTYPE html>\n<html lang=\"en\"><head><meta charset=\"utf-8\"><title>Subtitle menu</title></head>\n"
+    "<body><p>The subtitle menu view is not built yet (run npm run build in ui/).</p>\n"
+    "<script>window.parent.postMessage({jsonrpc: \"2.0\", id: 1, method: \"ui/initialize\", params: {"
+    "protocolVersion: \"2026-01-26\", appInfo: {name: \"YouTube Subtitles\", version: \"0\"}, "
+    "appCapabilities: {}}}, \"*\");</script>\n</body></html>\n"
 )
+UNDECLARED_APPS_NOTE = (
+    "This client did not declare whether it renders MCP Apps. If the interactive subtitle menu is shown, the "
+    "user picks there: keep your reply short and wait. Otherwise present this menu and wait."
+)
+MENU_FORMATS = [{"id": "txt", "label": "TXT"}, {"id": "srt", "label": "SRT"}, {"id": "vtt", "label": "VTT"}]
+MENU_LAYOUTS = [
+    {"id": "paragraphs", "label": "Paragraphs"},
+    {"id": "sentences", "label": "Sentences"},
+    {"id": "cues", "label": "Original cues"},
+]
+MENU_DEFAULTS = {"fmt": "txt", "layout": "paragraphs"}
+MENU_LABELS = {
+    "en": {
+        "subtitles": "Subtitles", "format": "Format", "layout": "Text layout",
+        "paragraphs": "Paragraphs", "sentences": "Sentences", "cues": "Original cues",
+        "original": "original", "auto": "auto", "download": "Download", "preview": "Preview",
+        "summarize": "Summarize", "translate": "Translate to Korean", "keypoints": "Key points",
+        "copy": "Copy", "copied": "Copied", "openWeb": "Open web app", "selected": "Selected",
+        "downloading": "Preparing file...", "downloadReady": "If the download did not start, open this link:",
+        "loading": "Loading...", "error": "Something went wrong",
+    },
+    "ko": {
+        "subtitles": "자막", "format": "파일 형식", "layout": "텍스트 줄 정돈",
+        "paragraphs": "문단", "sentences": "한 문장씩", "cues": "원본 줄",
+        "original": "원본", "auto": "자동", "download": "다운로드", "preview": "미리 보기",
+        "summarize": "요약", "translate": "한국어로 번역", "keypoints": "핵심 정리",
+        "copy": "복사", "copied": "복사됨", "openWeb": "웹앱 열기", "selected": "선택됨",
+        "downloading": "파일 준비 중...",
+        "downloadReady": "다운로드가 시작되지 않으면 이 링크를 여세요:",
+        "loading": "불러오는 중...", "error": "오류가 발생했습니다",
+    },
+}
+
+
+def _load_menu_html() -> str:
+    """The built view (app/ui/menu.html); a placeholder with a warning when it has not been built yet."""
+    try:
+        return MENU_HTML_PATH.read_text(encoding="utf-8")
+    except FileNotFoundError:
+        log.warning("%s is missing; serving a placeholder for %s. Build it with: cd ui && npm install && "
+                    "npm run build", MENU_HTML_PATH, MENU_URI)
+        return MENU_PLACEHOLDER_HTML
+
+
+MENU_HTML = _load_menu_html()
+apps = Apps()
 
 
 class TrackOut(TypedDict):
@@ -130,6 +187,37 @@ class DownloadLinkOut(TypedDict):
     note: str
 
 
+class MenuVideoOut(TypedDict):
+    video_id: str
+    title: str
+    channel: str | None
+    duration: str | None
+    duration_seconds: int | None
+    published: str | None
+    url: str
+    thumbnail: str | None
+    original_language: str | None
+
+
+class MenuTrackOut(TypedDict):
+    lang: str
+    name: str
+    auto: bool
+    kind: Literal["original", "auto"]
+
+
+class SubtitleMenuOut(TypedDict):
+    video: MenuVideoOut
+    tracks: list[MenuTrackOut]
+    recommended: RecommendedOut | None
+    formats: list[OptionOut]
+    layouts: list[OptionOut]
+    defaults: dict[str, str]
+    base_url: str
+    download_template: str
+    labels: dict[str, dict[str, str]]
+
+
 def _register(fn, *, structured: bool):
     """Register a tool; the dedented docstring becomes its description."""
     server.add_tool(fn, description=inspect.cleandoc(fn.__doc__ or ""), structured_output=structured)
@@ -140,12 +228,16 @@ def build_http_app() -> Starlette:
     """Create a fresh streamable HTTP transport (and session manager) for one app lifespan.
 
     A session manager can only run once, so app.main calls this on every
-    startup. Host/Origin checks are off: the app runs behind proxies (Hugging
-    Face, Render) with arbitrary Host headers, and /mcp has its own API key guard.
+    startup. Sessions are stateful (Mcp-Session-Id) so the capabilities a client
+    declares in initialize, such as MCP Apps support, are known on every later
+    request; sessions live in this process, so run a single uvicorn worker.
+    Idle sessions expire after the SDK default (30 minutes). Host/Origin checks
+    are off: the app runs behind proxies (Hugging Face, Render) with arbitrary
+    Host headers, and /mcp has its own API key guard.
     """
     return server.streamable_http_app(
         streamable_http_path="/",
-        stateless_http=True,
+        stateless_http=False,
         json_response=True,
         transport_security=TransportSecuritySettings(enable_dns_rebinding_protection=False),
     )
@@ -241,9 +333,8 @@ def _truncate(text: str, max_chars: int) -> str:
 async def get_video_info(url: str) -> VideoInfoOut:
     """Look up a YouTube video and list its downloadable subtitle tracks.
 
-    Call this first whenever the user shares a YouTube link. If the user did not say what they want,
-    call only this tool, then show a short menu in the user's language (tracks with the recommended one
-    first, format, TXT layout, and action: download link, summary, translation, key points) and wait.
+    When the user shares a YouTube link, call subtitle_menu instead (it shows the menu). Use this tool
+    when you need the track list as data, for example to answer a question about the available languages.
     `url` is a YouTube URL (watch, youtu.be, shorts, live, embed) or an 11-character video id.
     Returns title, channel, duration, published date (YYYY-MM-DD), original_language, `tracks`
     (manual uploader tracks first, then original-language auto captions such as "en-orig"; each
@@ -282,7 +373,7 @@ async def get_subtitles(
 ) -> list[TextContent | EmbeddedResource | ResourceLink]:
     """Download the subtitles of a YouTube video as text.
 
-    Call this only after the user picked what they want from the get_video_info menu, or when the
+    Call this only after the user picked what they want from the subtitle menu, or when the
     request already makes it clear (for example "summarize this video": the recommended track as TXT
     paragraphs). To hand the user a file instead of reading the text, use get_download_link.
     `url`: YouTube URL or 11-character video id.
@@ -362,6 +453,121 @@ async def get_download_link(
         track=DownloadTrackOut(lang=track.lang, name=track.name, auto=track.auto),
         note=READY_NOTE if base else UNCONFIGURED_NOTE,
     )
+
+
+def _text_menu(data: SubtitleMenuOut) -> str:
+    """The subtitle menu as plain text, for clients that cannot render the interactive view."""
+    video = data["video"]
+    facts = ", ".join(x for x in (video["channel"], video["duration"], video["published"]) if x)
+    rec = data["recommended"]
+    lines = [f"Subtitle menu for '{video['title']}'" + (f" ({facts})" if facts else "") + f": {video['url']}", "",
+             "Tracks (pass lang and auto to get_subtitles or get_download_link):"]
+    for i, t in enumerate(data["tracks"], 1):
+        mark = " (recommended)" if rec and (t["lang"], t["auto"]) == (rec["lang"], rec["auto"]) else ""
+        lines.append(f"{i}. {t['name']}, {t['kind']}: lang={t['lang']}, auto={str(t['auto']).lower()}{mark}")
+    lines += [
+        "",
+        "Formats (fmt): " + ", ".join(f"{f['label']} ({f['id']})" for f in data["formats"]) + "; default txt.",
+        "Text layout for TXT (layout): " + ", ".join(f"{x['label']} ({x['id']})" for x in data["layouts"])
+        + "; default paragraphs.",
+        "Actions: download link (get_download_link), preview the text (get_subtitles), summarize, translate, "
+        "key points.",
+        "",
+        "Ask the user what they want.",
+    ]
+    return "\n".join(lines)
+
+
+def _apps_support(ctx: Context) -> bool | None:
+    """True or False as the client declared it, None when it declared no capabilities (or no request)."""
+    try:
+        if ctx.client_capabilities is None:
+            return None
+        return client_supports_apps(ctx)
+    except (ValueError, RuntimeError):  # no active request (a direct call)
+        return None
+
+
+def _menu_data(info: youtube.VideoInfo, base: str) -> SubtitleMenuOut:
+    tracks = youtube.downloadable_tracks(info)
+    rec = youtube.recommended_track(info)
+    return SubtitleMenuOut(
+        video=MenuVideoOut(
+            video_id=info.video_id,
+            title=info.title,
+            channel=info.channel,
+            duration=format_duration(info.duration) or None,
+            duration_seconds=info.duration,
+            published=info.upload_date,
+            url=info.webpage_url,
+            thumbnail=info.thumbnail or f"https://i.ytimg.com/vi/{info.video_id}/hqdefault.jpg",
+            original_language=info.original_language,
+        ),
+        tracks=[MenuTrackOut(lang=t.lang, name=t.name, auto=t.auto, kind="auto" if t.auto else "original")
+                for t in tracks],
+        recommended=RecommendedOut(lang=rec.lang, auto=rec.auto) if rec else None,
+        formats=[OptionOut(**f) for f in MENU_FORMATS],
+        layouts=[OptionOut(**x) for x in MENU_LAYOUTS],
+        defaults=dict(MENU_DEFAULTS),
+        base_url=base,
+        download_template=(f"{base}/api/download?url={info.video_id}&lang={{lang}}&auto={{auto}}"
+                           "&fmt={fmt}&layout={layout}&header=1"),
+        labels=MENU_LABELS,
+    )
+
+
+@apps.tool(
+    resource_uri=MENU_URI,
+    name="subtitle_menu",
+    title="Subtitle menu",
+    description=(
+        "Show an interactive menu for a YouTube video: subtitle tracks, format, text layout, and actions "
+        "(download, preview, summarize, translate). Call this when the user shares a YouTube link. Returns a "
+        "short status text; the user picks in the menu."
+    ),
+)
+async def subtitle_menu(url: str, ctx: Context) -> Annotated[CallToolResult, SubtitleMenuOut]:
+    """Menu data for the view (structuredContent) plus a short text for the model (content).
+
+    The model reads a "wait for the user" status when the client declared MCP Apps support, and the
+    whole menu as text when it declared no support. A request that carries no client capabilities
+    (for example a 2026-07-28 request without them, or a direct call) gets the text menu with
+    UNDECLARED_APPS_NOTE, since the host may still render the view.
+    """
+    info = await _load(url)
+    data = _menu_data(info, _base_url(ctx))
+    apps_support = _apps_support(ctx)
+    if apps_support:
+        count = len(data["tracks"])
+        langs = ", ".join(t["lang"] + (" (auto)" if t["auto"] else "") for t in data["tracks"])
+        text = (
+            f"Interactive menu shown for '{info.title}' ({count} {'track' if count == 1 else 'tracks'}: {langs}). "
+            "The user is choosing a track, format and action in the menu. Wait for their choice; do not call "
+            "get_subtitles or get_download_link until the user picks an action or asks explicitly."
+        )
+    else:
+        text = _text_menu(data)
+        if apps_support is None:
+            text = UNDECLARED_APPS_NOTE + "\n\n" + text
+    return CallToolResult(content=[TextContent(type="text", text=text)], structured_content=data)
+
+
+apps.add_html_resource(
+    MENU_URI,
+    MENU_HTML,
+    name="Subtitle menu",
+    description="Interactive subtitle menu for one YouTube video (MCP App view).",
+    csp=ResourceCsp(resource_domains=["https://i.ytimg.com", "https://*.ytimg.com"]),
+    permissions=ResourcePermissions(clipboard_write={}),
+    prefers_border=True,
+)
+server = MCPServer(
+    name="youtube-subtitles",
+    title="YouTube Subtitle Downloader",
+    version=__version__,
+    instructions=INSTRUCTIONS,
+    extensions=[apps],
+)
 
 
 def _flag(value: str, name: str) -> bool:

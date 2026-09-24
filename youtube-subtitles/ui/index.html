@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="color-scheme" content="light dark">
+<title>YouTube Subtitles</title>
+<style>/*__MENU_CSS__*/</style>
+</head>
+<body>
+<main id="app" class="panel" aria-live="polite">
+  <div id="loading" class="loading" role="status">
+    <span class="spinner" aria-hidden="true"></span>
+    <span id="loading-text">Loading...</span>
+  </div>
+
+  <div id="alert" class="alert" role="alert" hidden>
+    <svg class="alert-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true"><circle cx="12" cy="12" r="10" stroke-width="2"/><path stroke-linecap="round" stroke-width="2" d="M12 8v4m0 4h.01"/></svg>
+    <p id="alert-text" class="alert-text"></p>
+    <button id="alert-close" type="button" class="btn btn-ghost btn-icon alert-close" aria-label="Dismiss">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 6 6 18M6 6l12 12"/></svg>
+    </button>
+  </div>
+
+  <section id="menu" class="menu" aria-labelledby="video-title" hidden>
+    <header class="head">
+      <a id="thumb-link" class="thumb" href="#" aria-hidden="true" tabindex="-1">
+        <img id="thumb-img" alt="" referrerpolicy="no-referrer" hidden>
+        <svg class="thumb-fallback" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true"><rect x="2" y="4" width="20" height="16" rx="3" stroke-width="1.5"/><path stroke-linejoin="round" stroke-width="1.5" d="m10 9 5 3-5 3V9Z"/></svg>
+      </a>
+      <div class="meta">
+        <h2 id="video-title" class="title"><a id="title-link" class="title-link" href="#"></a></h2>
+        <p id="video-channel" class="channel"></p>
+        <div class="badges">
+          <span id="badge-duration" class="badge" hidden>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true"><circle cx="12" cy="12" r="9" stroke-width="2"/><path stroke-linecap="round" stroke-width="2" d="M12 7v5l3 2"/></svg>
+            <span id="duration-text"></span>
+          </span>
+          <span id="badge-date" class="badge" hidden>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2" stroke-width="2"/><path stroke-linecap="round" stroke-width="2" d="M16 2v4M8 2v4M3 10h18"/></svg>
+            <span id="date-text"></span>
+          </span>
+        </div>
+      </div>
+    </header>
+
+    <fieldset class="group">
+      <legend id="tracks-legend" class="legend">Subtitles</legend>
+      <div id="chips" class="chips"></div>
+    </fieldset>
+
+    <div class="controls">
+      <fieldset class="group">
+        <legend id="format-legend" class="legend">Format</legend>
+        <div id="formats" class="tabs"></div>
+      </fieldset>
+      <fieldset id="layout-group" class="group">
+        <legend id="layout-legend" class="legend">Text layout</legend>
+        <div id="layouts" class="tabs"></div>
+      </fieldset>
+    </div>
+
+    <p id="selected-line" class="selected-line"><span id="selected-label" class="sel-label">Selected</span> <span id="selected-badge" class="badge badge-outline"></span></p>
+
+    <div class="actions">
+      <button id="btn-download" type="button" class="btn btn-default">
+        <span class="spinner" aria-hidden="true" hidden></span>
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v11m-4.5-4.5L12 15l4.5-4.5M5 20h14"/></svg>
+        <span class="label" data-label="download">Download</span>
+      </button>
+      <button id="btn-preview" type="button" class="btn btn-outline" aria-expanded="false" aria-controls="preview">
+        <span class="spinner" aria-hidden="true" hidden></span>
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3" stroke-width="2"/></svg>
+        <span class="label" data-label="preview">Preview</span>
+      </button>
+      <button id="btn-summarize" type="button" class="btn btn-outline" data-prompt="summarize">
+        <span class="spinner" aria-hidden="true" hidden></span>
+        <span class="label" data-label="summarize">Summarize</span>
+      </button>
+      <button id="btn-translate" type="button" class="btn btn-outline" data-prompt="translate">
+        <span class="spinner" aria-hidden="true" hidden></span>
+        <span class="label" data-label="translate">Translate to Korean</span>
+      </button>
+      <button id="btn-keypoints" type="button" class="btn btn-outline" data-prompt="keypoints">
+        <span class="spinner" aria-hidden="true" hidden></span>
+        <span class="label" data-label="keypoints">Key points</span>
+      </button>
+      <button id="btn-web" type="button" class="btn btn-link" hidden>
+        <span class="label" data-label="openWeb">Open web app</span>
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 3h6v6M10 14 21 3M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/></svg>
+      </button>
+    </div>
+
+    <p id="notice" class="notice" role="status" hidden></p>
+
+    <div id="download-info" class="download-info" hidden>
+      <p id="download-ready" class="muted">If the download did not start, open this link:</p>
+      <a id="download-url" class="download-url" href="#"></a>
+    </div>
+
+    <div id="preview" class="preview" hidden>
+      <div class="preview-bar">
+        <span id="preview-title" class="muted"></span>
+        <button id="btn-copy" type="button" class="btn btn-outline btn-sm">
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true"><rect x="9" y="9" width="12" height="12" rx="2" stroke-width="2"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+          <span class="label">Copy</span>
+        </button>
+      </div>
+      <pre id="preview-text" class="pre-box" tabindex="0"></pre>
+      <p id="copy-hint" class="muted small" hidden></p>
+    </div>
+  </section>
+</main>
+<script>/*__MENU_JS__*/</script>
+</body>
+</html>

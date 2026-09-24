@@ -1,0 +1,20 @@
+{
+  "name": "youtube-subtitles-ui",
+  "version": "1.0.0",
+  "private": true,
+  "description": "MCP App view for the subtitle_menu tool. Builds ../app/ui/menu.html.",
+  "type": "module",
+  "scripts": {
+    "build": "node build.mjs",
+    "typecheck": "tsc --noEmit",
+    "smoke": "python3 test/smoke.py"
+  },
+  "devDependencies": {
+    "@modelcontextprotocol/client": "2.1.0",
+    "@modelcontextprotocol/core": "2.1.0",
+    "@modelcontextprotocol/ext-apps": "2.0.0",
+    "esbuild": "0.28.2",
+    "typescript": "5.9.3",
+    "zod": "4.6.5"
+  }
+}

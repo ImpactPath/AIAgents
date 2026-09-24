@@ -22,7 +22,7 @@ share one yt-dlp extraction.
 
 ```
 app/main.py       FastAPI app: API endpoints, /mcp, serves static/
-app/mcp_server.py MCP server (tools get_video_info, get_subtitles, get_download_link)
+app/mcp_server.py MCP server (tools subtitle_menu, get_video_info, get_subtitles, get_download_link)
 app/youtube.py    URL parsing, yt-dlp wrapper, TTL cache
 app/convert.py    pure VTT/SRT parsing and SRT/VTT/TXT rendering
 static/index.html single-file UI
@@ -79,12 +79,22 @@ rebuilt `https://www.youtube.com/watch?v=<id>` URL to yt-dlp, never the raw user
 ## Use it from Claude and ChatGPT (MCP)
 
 The app also serves an MCP (Model Context Protocol) server at `https://<your-host>/mcp` (streamable
-HTTP) with three tools: `get_video_info` (downloadable tracks, a recommended one, and the menu options),
-`get_subtitles` (text, SRT, or VTT with the metadata header; long output is truncated at `max_chars`) and
+HTTP with sessions: clients send `initialize`, then the returned `Mcp-Session-Id` header on every request;
+sessions live in the server process, so run a single worker, and idle ones expire after 30 minutes) with
+four tools: `subtitle_menu` (the interactive menu, below), `get_video_info` (downloadable tracks, a
+recommended one, and the menu options), `get_subtitles` (text, SRT, or VTT with the metadata header; long output is truncated at `max_chars`) and
 `get_download_link` (a clickable `/api/download` link for the chosen track, format and layout, without
 fetching the subtitles; it uses `PUBLIC_BASE_URL`, else `RENDER_EXTERNAL_URL`, else the request's host).
-When you paste only a link, the model lists the tracks, formats, layouts and actions (download link,
-summary, translation, key points) and waits for your choice.
+When you paste only a link, the model calls `subtitle_menu` and waits for your choice.
+
+`subtitle_menu` is an MCP App: clients that render MCP Apps (Claude, for example) show an interactive
+menu in the chat with the subtitle tracks, the format (TXT, SRT, VTT), the TXT text layout, and buttons to
+download the file, preview the text, summarize, translate to Korean, or list the key points. The view is
+the `ui://youtube-subtitles/menu.html` resource, served from `app/ui/menu.html`; it may load the video
+thumbnail from `i.ytimg.com`. Clients that declare no MCP Apps support get the same menu as text and the
+model asks what you want. The built `app/ui/menu.html` is committed, so running the app needs no Node.js;
+after changing the view sources in `ui/`, rebuild it with `cd ui && npm install && npm run build`
+(Node 22). If the file is missing, the server logs a warning and serves a placeholder page.
 
 `get_subtitles` also attaches the track as an embedded resource and a resource link named like the download
 file, so clients that support it show a file; pass `attach: false` for the text only.
