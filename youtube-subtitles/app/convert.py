@@ -263,9 +263,11 @@ def format_duration(seconds: int | float | None) -> str:
 def _header_lines(meta: dict) -> list[str]:
     name = str(meta.get("track_name") or "").strip()
     if meta.get("track_auto"):
-        # Auto track names already say "(auto-generated)"; show it once, as a tag.
+        # Older names may still say "(auto-generated)"; show it once, as a tag.
         name = re.sub(r"\s*\(auto-generated\)$", "", name, flags=re.I)
         name = f"{name} [auto-generated]".strip()
+    elif name:
+        name += " [original]"  # manual tracks are the uploader's own subtitles
     lang = str(meta.get("track_lang") or "").strip()
     subtitles = f"{name} ({lang})" if name and lang else name or lang
     fields = [

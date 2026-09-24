@@ -172,6 +172,20 @@ def _pick_entry(entries: list) -> dict | None:
     return None
 
 
+_NAME_NOISE_RE = re.compile(r"\(\s*(?:original|auto-generated)\s*\)|[-\u2013]\s*auto-generated\b", re.I)
+
+
+def clean_track_name(name: str | None, lang: str, auto: bool) -> str:
+    """Normalize YouTube's track name: "Original" means uploader-provided here.
+
+    Drops "(Original)" and "(auto-generated)" (the auto flag carries that), marks
+    YouTube's unedited speech-recognition track ("<lang>-orig") as "(unedited)",
+    and falls back to the language code.
+    """
+    base = " ".join(_NAME_NOISE_RE.sub(" ", str(name or "")).split()).strip(" -") or lang
+    return f"{base} (unedited)" if auto and lang.endswith("-orig") else base
+
+
 def _collect_tracks(mapping: dict | None, auto: bool) -> list[Track]:
     tracks = []
     for lang, entries in (mapping or {}).items():
@@ -180,9 +194,7 @@ def _collect_tracks(mapping: dict | None, auto: bool) -> list[Track]:
         entry = _pick_entry(entries)
         if not entry:
             continue
-        name = str(entry.get("name") or lang)
-        if auto and "auto-generated" not in name.lower():
-            name += " (auto-generated)"
+        name = clean_track_name(entry.get("name"), lang, auto)
         tracks.append(Track(lang=lang, name=name, auto=auto, url=entry["url"], ext=entry.get("ext") or "vtt"))
     return sorted(tracks, key=lambda t: t.lang)
 

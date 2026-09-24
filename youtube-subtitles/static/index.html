@@ -445,7 +445,7 @@
                 </fieldset>
 
                 <fieldset id="manual-group" class="mb-6">
-                    <legend class="float-left text-sm font-medium" data-i18n="manualGroup">Manual subtitles</legend>
+                    <legend class="float-left text-sm font-medium" data-i18n="manualGroup">Original subtitles</legend>
                     <span id="manual-count" class="float-right text-xs text-muted-foreground leading-5"></span>
                     <div id="manual-chips" class="clear-both pt-3 flex flex-wrap gap-2"></div>
                 </fieldset>
@@ -489,12 +489,16 @@
         const PREVIEW_LIMIT = 4000;
         const AUTO_FILTER_THRESHOLD = 12;
 
-        // Preferred subtitle languages for the "Recommended" group, highest priority first.
-        // Edit this list to change which tracks are suggested. 'en-orig' is YouTube's original-language
-        // English auto track; an entry like 'en' also accepts regional codes such as 'en-US' when no exact
-        // match exists, but never another entry of this list (so 'en' never picks up 'en-orig').
-        // Add a display name for any new code under langNames in both I18N dictionaries.
-        const PREFERRED_LANGS = ['en-orig', 'en', 'ko'];
+        // Language groups for the "Recommended" group, highest priority first. For each group the
+        // uploader-provided ("original", manual) track comes first, then the listed auto codes in order.
+        // 'en-orig' is YouTube's unedited English auto track. Codes ending in -orig match exactly; other
+        // codes also accept a regional variant such as 'en-US' when no exact match exists, but never a
+        // code listed anywhere in this list (so 'en' never picks up 'en-orig').
+        // When you edit this list, also update recOrder in both I18N dictionaries.
+        const PREFERRED = [
+            { manual: 'en', auto: ['en-orig', 'en'] },
+            { manual: 'ko', auto: ['ko'] },
+        ];
 
         const TXT_LAYOUTS = ['paragraphs', 'sentences', 'cues'];
         const LAYOUT_KEY = 'yts_txt_layout';
@@ -517,16 +521,15 @@
                 unknownChannel: 'Unknown channel',
                 trackCount: '{n} tracks',
                 trackCountOne: '1 track',
-                manualGroup: 'Manual subtitles',
+                manualGroup: 'Original subtitles',
                 autoGroup: 'Auto-generated',
                 recGroup: 'Recommended',
-                recOrder: 'Order: {list}',
-                kindManual: 'manual',
+                recOrder: 'Order: English (original), English (auto), Korean',
+                kindManual: 'original',
                 kindAuto: 'auto',
                 selectedTrack: 'Selected: {name} · {kind} · {lang}',
                 selectedJump: 'Show the selected track in the list',
                 openVideo: 'Open video on YouTube',
-                langNames: { 'en-orig': 'English (original)', en: 'English', ko: 'Korean' },
                 filterLabel: 'Filter languages',
                 filterPlaceholder: 'Filter languages, e.g. Spanish or es',
                 noMatch: 'No languages match.',
@@ -569,16 +572,15 @@
                 unknownChannel: '채널 정보 없음',
                 trackCount: '자막 {n}개',
                 trackCountOne: '자막 1개',
-                manualGroup: '업로더 제공 자막',
+                manualGroup: '원본 자막',
                 autoGroup: '자동 생성 자막',
                 recGroup: '추천 자막',
-                recOrder: '우선순위: {list}',
-                kindManual: '업로더',
+                recOrder: '우선순위: 영어(원본), 영어(자동), 한국어',
+                kindManual: '원본',
                 kindAuto: '자동',
                 selectedTrack: '선택됨: {name} · {kind} · {lang}',
                 selectedJump: '목록에서 선택한 자막 보기',
                 openVideo: '유튜브에서 영상 열기',
-                langNames: { 'en-orig': '영어(원본)', en: '영어', ko: '한국어' },
                 filterLabel: '언어 검색',
                 filterPlaceholder: '언어 검색 (예: Spanish, es)',
                 noMatch: '일치하는 언어가 없습니다.',
@@ -902,31 +904,30 @@
             return tr.auto ? tr.name.replace(/\s*\(auto-generated\)\s*$/i, '') || tr.name : tr.name;
         }
 
-        // Track indexes for the Recommended group, in PREFERRED_LANGS order. Per entry: exact lang match
-        // first, else a regional variant ('en' -> 'en-US') that is not itself a listed entry. At most one
-        // manual and one auto track per entry, manual first.
+        // Track indexes for the Recommended group, following PREFERRED: per group the manual track, then
+        // each listed auto code in order. Exact match first; codes not ending in -orig fall back to a
+        // regional variant ('en' -> 'en-US') that is not itself listed in PREFERRED. No track twice.
         function recommendedTracks(tracks) {
+            const listed = new Set();
+            PREFERRED.forEach((g) => { if (g.manual) listed.add(g.manual.toLowerCase()); (g.auto || []).forEach((c) => listed.add(c.toLowerCase())); });
             const out = [];
             const used = new Set();
-            PREFERRED_LANGS.forEach((entry) => {
-                const want = entry.toLowerCase();
-                [false, true].forEach((isAuto) => {
-                    const pick = (test) => tracks.findIndex((tr, i) => tr.auto === isAuto && !used.has(i) && test(tr.lang.toLowerCase()));
-                    let i = pick((lang) => lang === want);
-                    if (i === -1) {
-                        i = pick((lang) => lang.startsWith(want + '-') &&
-                            !PREFERRED_LANGS.some((p) => p.toLowerCase() === lang));
-                    }
-                    if (i !== -1) { used.add(i); out.push(i); }
-                });
+            const add = (code, isAuto) => {
+                const want = code.toLowerCase();
+                const pick = (test) => tracks.findIndex((tr, i) => tr.auto === isAuto && !used.has(i) && test(tr.lang.toLowerCase()));
+                let i = pick((lang) => lang === want);
+                if (i === -1 && !/-orig$/.test(want)) i = pick((lang) => lang.startsWith(want + '-') && !listed.has(lang));
+                if (i !== -1) { used.add(i); out.push(i); }
+            };
+            PREFERRED.forEach((g) => {
+                if (g.manual) add(g.manual, false);
+                (g.auto || []).forEach((code) => add(code, true));
             });
             return out;
         }
 
         function renderRecOrder() {
-            const names = t('langNames');
-            const lookup = (code) => (names && typeof names === 'object' && names[code]) || (I18N.en.langNames[code]) || code;
-            els.recOrder.textContent = t('recOrder', { list: PREFERRED_LANGS.map(lookup).join(', ') });
+            els.recOrder.textContent = t('recOrder');
         }
 
         function renderChips(container, indexes, opts) {
