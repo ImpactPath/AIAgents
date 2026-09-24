@@ -471,13 +471,9 @@ async function onCopy(): Promise<void> {
 // ---------- Chat prompts ----------
 
 function answerLanguage(): string {
-  const locale = hostContext()?.locale;
-  if (!locale) return "the user's language";
-  try {
-    const name = new Intl.DisplayNames(["en"], { type: "language" }).of(locale.split("-")[0]);
-    if (name) return name;
-  } catch { /* fall through */ }
-  return "the user's language";
+  // The host locale is the app's UI language, not necessarily the user's; the model sees the chat and
+  // matches the language the user has been writing in.
+  return "the language the user has been writing in (match their messages)";
 }
 
 function promptText(kind: string): string {
