@@ -145,10 +145,10 @@ def clean_cues(cues: list[Cue]) -> list[Cue]:
     return out
 
 
-def render_srt(cues: list[Cue]) -> str:
+def render_srt(cues: list[Cue], first: int = 1) -> str:
     blocks = [
         f"{i}\n{format_timestamp(c.start, ',')} --> {format_timestamp(c.end, ',')}\n{c.text}\n"
-        for i, c in enumerate(cues, start=1)
+        for i, c in enumerate(cues, start=first)
     ]
     return "\n".join(blocks)
 
@@ -251,19 +251,79 @@ def render_txt_paragraphs(cues: list[Cue]) -> str:
 _TXT_RENDERERS = {"paragraphs": render_txt_paragraphs, "sentences": render_txt_sentences, "cues": render_txt}
 
 
-def convert(text: str, fmt: str, layout: str = "paragraphs") -> str:
+def format_duration(seconds: int | float | None) -> str:
+    """h:mm:ss, or mm:ss under an hour; "" when unknown."""
+    if seconds is None or seconds < 0:
+        return ""
+    hours, rest = divmod(int(seconds), 3600)
+    minutes, secs = divmod(rest, 60)
+    return f"{hours}:{minutes:02d}:{secs:02d}" if hours else f"{minutes:02d}:{secs:02d}"
+
+
+def _header_lines(meta: dict) -> list[str]:
+    name = str(meta.get("track_name") or "").strip()
+    if meta.get("track_auto"):
+        # Auto track names already say "(auto-generated)"; show it once, as a tag.
+        name = re.sub(r"\s*\(auto-generated\)$", "", name, flags=re.I)
+        name = f"{name} [auto-generated]".strip()
+    lang = str(meta.get("track_lang") or "").strip()
+    subtitles = f"{name} ({lang})" if name and lang else name or lang
+    fields = [
+        ("Title", meta.get("title")),
+        ("Channel", meta.get("channel")),
+        ("Duration", format_duration(meta.get("duration"))),
+        ("Published", meta.get("upload_date")),
+        ("URL", meta.get("url")),
+        ("Subtitles", subtitles),
+    ]
+    lines = []
+    for label, value in fields:
+        # One line per field; "-->" would end a VTT NOTE or look like SRT timing.
+        value = " ".join(str(value or "").split()).replace("-->", "->")
+        if value:
+            lines.append(f"{label}: {value}")
+    return lines
+
+
+def render_header(meta: dict, fmt: str) -> str:
+    """Metadata block to put before the cues, ending with a blank line ("" when meta is empty).
+
+    txt: plain lines. vtt: a NOTE comment block (goes right after "WEBVTT").
+    srt: a cue from 0 to 1 ms so every player still accepts the file; real
+    cues are then numbered from 2.
+    """
+    if fmt not in FORMATS:
+        raise ValueError(f"unsupported format: {fmt}")
+    lines = _header_lines(meta)
+    if not lines:
+        return ""
+    body = "\n".join(lines)
+    if fmt == "vtt":
+        return f"NOTE\n{body}\n\n"
+    if fmt == "srt":
+        return f"1\n{format_timestamp(0)} --> {format_timestamp(1)}\n{body}\n\n"
+    return f"{body}\n\n"
+
+
+def convert(text: str, fmt: str, layout: str = "paragraphs", header: dict | None = None) -> str:
     """Convert raw VTT/SRT subtitle text into the requested format.
 
-    layout only applies to fmt="txt" and is ignored otherwise.
+    layout only applies to fmt="txt" and is ignored otherwise. header is the
+    metadata for render_header; None (or a track with no cues) adds nothing.
     """
     if fmt not in FORMATS:
         raise ValueError(f"unsupported format: {fmt}")
     if fmt == "txt" and layout not in LAYOUTS:
         raise ValueError(f"unsupported layout: {layout}")
     cues = clean_cues(parse_cues(text))
+    head = render_header(header, fmt) if header and cues else ""
     if fmt == "txt":
-        return _TXT_RENDERERS[layout](cues)
-    return {"srt": render_srt, "vtt": render_vtt}[fmt](cues)
+        return head + _TXT_RENDERERS[layout](cues)
+    if fmt == "srt":
+        return head + render_srt(cues, first=2 if head else 1)
+    body = render_vtt(cues)
+    prefix = "WEBVTT\n\n"
+    return prefix + head + body[len(prefix) :] if head else body
 
 
 def vtt_to_srt(vtt: str) -> str:

@@ -52,14 +52,14 @@ def test_parse_video_id_rejects(text):
     assert parse_video_id(text) is None
 
 
-def make_info(title="Never Gonna Give You Up", tracks=None):
+def make_info(title="Never Gonna Give You Up", tracks=None, upload_date="2009-10-25"):
     if tracks is None:
         tracks = [
             Track("en", "English", False, "u1"),
             Track("ko", "Korean", False, "u2"),
             Track("en", "English (auto-generated)", True, "u3"),
         ]
-    return VideoInfo(VID, title, "Rick Astley", 212, "https://i.ytimg.com/x.jpg", tracks)
+    return VideoInfo(VID, title, "Rick Astley", 212, "https://i.ytimg.com/x.jpg", tracks, upload_date)
 
 
 @pytest.fixture
@@ -79,6 +79,24 @@ def client(monkeypatch):
     c = TestClient(app)
     c.calls = calls
     return c
+
+
+@pytest.mark.parametrize(
+    "raw,expected",
+    [
+        ({"upload_date": "20260920"}, "2026-09-20"),
+        ({"upload_date": "garbage", "release_date": "20250102"}, "2025-01-02"),
+        ({"upload_date": "20261340"}, None),
+        ({"upload_date": "garbage"}, None),
+        ({"upload_date": 20260920}, "2026-09-20"),
+        ({}, None),
+    ],
+)
+def test_upload_date_parsing(raw, expected):
+    info = normalize_info(VID, {"title": "T", **raw})
+    assert info.upload_date == expected
+    assert info.public()["upload_date"] == expected
+    assert info.public()["url"] == f"https://www.youtube.com/watch?v={VID}"
 
 
 def test_normalize_info_ordering_and_entry_choice():
@@ -117,6 +135,7 @@ def test_info_ok(client):
     assert r.status_code == 200
     body = r.json()
     assert body["video_id"] == VID and body["duration"] == 212
+    assert body["upload_date"] == "2009-10-25" and body["url"] == URL
     assert body["tracks"] == [
         {"lang": "en", "name": "English", "auto": False},
         {"lang": "ko", "name": "Korean", "auto": False},
@@ -213,7 +232,7 @@ def test_fetch_info_is_cached(monkeypatch):
     ],
 )
 def test_download_formats(client, fmt, ctype, start):
-    r = client.get("/api/download", params={"url": URL, "lang": "en", "auto": "false", "fmt": fmt})
+    r = client.get("/api/download", params={"url": URL, "lang": "en", "auto": "false", "fmt": fmt, "header": "0"})
     assert r.status_code == 200
     assert r.headers["content-type"] == ctype
     assert r.text.startswith(start)
@@ -240,7 +259,7 @@ LAYOUT_VTT = (
 )
 def test_download_txt_layouts(client, monkeypatch, layout, body):
     monkeypatch.setattr(youtube, "fetch_subtitle_text", lambda track: LAYOUT_VTT)
-    params = {"url": URL, "lang": "en", "fmt": "txt"}
+    params = {"url": URL, "lang": "en", "fmt": "txt", "header": "false"}
     if layout:
         params["layout"] = layout
     r = client.get("/api/download", params=params)
@@ -262,6 +281,41 @@ def test_download_bad_layout_400(client):
     assert r.status_code == 400
     assert "layout" in r.json()["detail"] and "paragraphs" in r.json()["detail"]
     assert client.calls["info"] == [] and client.calls["sub"] == []
+
+
+HEADER_LINES = (
+    "Title: Never Gonna Give You Up\nChannel: Rick Astley\nDuration: 03:32\nPublished: 2009-10-25\n"
+    f"URL: {URL}\n"
+)
+
+
+@pytest.mark.parametrize(
+    "fmt,expected",
+    [
+        ("txt", HEADER_LINES + "Subtitles: English (en)\n\nHello there General Kenobi\n"),
+        ("srt", "1\n00:00:00,000 --> 00:00:00,001\n" + HEADER_LINES + "Subtitles: English (en)\n\n2\n00:00:01,000"),
+        ("vtt", "WEBVTT\n\nNOTE\n" + HEADER_LINES + "Subtitles: English (en)\n\n00:00:01.000 --> 00:00:02.000\n"),
+    ],
+)
+def test_download_header_on_by_default(client, fmt, expected):
+    r = client.get("/api/download", params={"url": URL, "lang": "en", "fmt": fmt})
+    assert r.status_code == 200 and r.text.startswith(expected)
+
+
+def test_download_header_auto_track_and_off(client):
+    params = {"url": URL, "lang": "en", "auto": "1", "fmt": "txt"}
+    on = client.get("/api/download", params={**params, "header": "true"}).text
+    assert "Subtitles: English [auto-generated] (en)\n" in on
+    off = client.get("/api/download", params={**params, "header": "0"}).text
+    assert off == "Hello there General Kenobi\n"
+
+
+def test_download_header_omits_missing_fields(client, monkeypatch):
+    info = make_info(upload_date=None)
+    info.channel = None
+    monkeypatch.setattr(youtube, "fetch_info", lambda vid: info)
+    text = client.get("/api/download", params={"url": URL, "lang": "ko", "fmt": "txt"}).text
+    assert text.startswith(f"Title: Never Gonna Give You Up\nDuration: 03:32\nURL: {URL}\nSubtitles: Korean (ko)\n\n")
 
 
 def test_download_defaults_and_auto_suffix(client):
@@ -295,6 +349,7 @@ def test_safe_title():
         ({"url": "https://example.com", "lang": "en"}, 400),
         ({"url": URL, "lang": "en", "fmt": "docx"}, 400),
         ({"url": URL, "lang": "en", "auto": "maybe"}, 400),
+        ({"url": URL, "lang": "en", "header": "yes"}, 400),
         ({"url": URL}, 400),
         ({"url": URL, "lang": "fr"}, 404),
         ({"url": URL, "lang": "ko", "auto": "true"}, 404),

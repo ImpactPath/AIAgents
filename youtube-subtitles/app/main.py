@@ -95,7 +95,12 @@ async def api_info(url: str = "") -> dict:
 
 @app.get("/api/download")
 async def api_download(
-    url: str = "", lang: str = "", auto: str = "false", fmt: str = "srt", layout: str = LAYOUTS[0]
+    url: str = "",
+    lang: str = "",
+    auto: str = "false",
+    fmt: str = "srt",
+    layout: str = LAYOUTS[0],
+    header: str = "1",
 ) -> Response:
     video_id = _video_id(url)
     fmt = fmt.strip().lower()
@@ -109,6 +114,9 @@ async def api_download(
     auto_flag = BOOL_VALUES.get(auto.strip().lower())
     if auto_flag is None:
         raise HTTPException(400, "Parameter 'auto' must be true, false, 1, or 0.")
+    header_flag = BOOL_VALUES.get(header.strip().lower())
+    if header_flag is None:
+        raise HTTPException(400, "Parameter 'header' must be true, false, 1, or 0.")
     lang = lang.strip()
     if not lang:
         raise HTTPException(400, "Parameter 'lang' is required.")
@@ -122,7 +130,19 @@ async def api_download(
         raw = await run_in_threadpool(youtube.fetch_subtitle_text, track)
     except youtube.YoutubeError as exc:
         raise HTTPException(502, f"Could not download subtitles: {exc}") from exc
-    body = convert(raw, fmt, layout)
+    meta = None
+    if header_flag:
+        meta = {
+            "title": info.title,
+            "channel": info.channel,
+            "duration": info.duration,
+            "upload_date": info.upload_date,
+            "url": info.webpage_url,
+            "track_name": track.name,
+            "track_lang": track.lang,
+            "track_auto": track.auto,
+        }
+    body = convert(raw, fmt, layout, header=meta)
     if not body.strip() or body.strip() == "WEBVTT":
         raise HTTPException(502, "The subtitle track was empty or could not be parsed.")
 

@@ -8,6 +8,7 @@ import re
 import threading
 import time
 from dataclasses import dataclass, field
+from datetime import datetime
 from urllib.parse import parse_qs, urlparse
 
 log = logging.getLogger(__name__)
@@ -48,6 +49,11 @@ class VideoInfo:
     duration: int | None = None
     thumbnail: str | None = None
     tracks: list[Track] = field(default_factory=list)
+    upload_date: str | None = None  # ISO "YYYY-MM-DD"
+    webpage_url: str = field(init=False)  # always the canonical watch URL for video_id
+
+    def __post_init__(self) -> None:
+        self.webpage_url = f"https://www.youtube.com/watch?v={self.video_id}"
 
     def public(self) -> dict:
         return {
@@ -56,6 +62,8 @@ class VideoInfo:
             "channel": self.channel,
             "duration": self.duration,
             "thumbnail": self.thumbnail,
+            "upload_date": self.upload_date,
+            "url": self.webpage_url,
             "tracks": [t.public() for t in self.tracks],
         }
 
@@ -179,6 +187,17 @@ def _collect_tracks(mapping: dict | None, auto: bool) -> list[Track]:
     return sorted(tracks, key=lambda t: t.lang)
 
 
+def parse_upload_date(value) -> str | None:
+    """Turn yt-dlp's "YYYYMMDD" into ISO "YYYY-MM-DD"; None when absent or invalid."""
+    text = str(value or "").strip()
+    if not re.fullmatch(r"\d{8}", text):
+        return None
+    try:
+        return datetime.strptime(text, "%Y%m%d").date().isoformat()
+    except ValueError:
+        return None
+
+
 def normalize_info(video_id: str, info: dict) -> VideoInfo:
     duration = info.get("duration")
     return VideoInfo(
@@ -188,6 +207,7 @@ def normalize_info(video_id: str, info: dict) -> VideoInfo:
         duration=int(duration) if isinstance(duration, (int, float)) else None,
         thumbnail=info.get("thumbnail"),
         tracks=_collect_tracks(info.get("subtitles"), False) + _collect_tracks(info.get("automatic_captions"), True),
+        upload_date=parse_upload_date(info.get("upload_date")) or parse_upload_date(info.get("release_date")),
     )
 
 

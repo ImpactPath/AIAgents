@@ -231,3 +231,81 @@ def test_regression_real_sample_paragraphs_end_at_sentence_boundaries():
     for line in lines[:-1]:
         assert line[-1] in ".!?\"')]”’", line[-40:]
     assert " ".join(lines).split() == " ".join(SAMPLE_LINES).split()
+
+
+# --- Metadata header ---------------------------------------------------------
+
+from app.convert import format_duration, render_header  # noqa: E402
+
+META = {
+    "title": "Passport Rush --> Part 1",
+    "channel": "Hixled Animation",
+    "duration": 3723,
+    "upload_date": "2026-09-20",
+    "url": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+    "track_name": "English (Original) (auto-generated)",
+    "track_lang": "en-orig",
+    "track_auto": True,
+}
+META_LINES = [
+    "Title: Passport Rush -> Part 1",
+    "Channel: Hixled Animation",
+    "Duration: 1:02:03",
+    "Published: 2026-09-20",
+    "URL: https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+    "Subtitles: English (Original) [auto-generated] (en-orig)",
+]
+HEADER_VTT = (
+    "WEBVTT\n\n00:00:00.000 --> 00:00:02.000\nFirst cue.\n\n00:00:03.000 --> 00:00:04.000\nSecond cue.\n"
+)
+
+
+def test_format_duration():
+    assert format_duration(212) == "03:32"
+    assert format_duration(59) == "00:59"
+    assert format_duration(3723) == "1:02:03"
+    assert format_duration(None) == ""
+
+
+def test_render_header_txt_all_fields():
+    assert render_header(META, "txt") == "\n".join(META_LINES) + "\n\n"
+
+
+def test_render_header_omits_missing_and_sanitizes():
+    meta = {**META, "upload_date": None, "channel": "", "track_auto": False, "track_name": "Korean", "track_lang": "ko"}
+    meta["title"] = "Multi\nline -->  title"
+    lines = render_header(meta, "txt").splitlines()
+    assert lines[0] == "Title: Multi line -> title"
+    assert not any(line.startswith(("Channel:", "Published:")) for line in lines)
+    assert lines[-2] == "Subtitles: Korean (ko)" and lines[-1] == ""
+    assert render_header({}, "txt") == ""
+    for fmt in ("srt", "vtt", "txt"):
+        assert "-->" not in render_header(meta, fmt).replace("00:00:00,000 --> 00:00:00,001", "")
+
+
+def test_header_srt_first_cue_and_renumbering():
+    out = convert(HEADER_VTT, "srt", header=META)
+    assert out.startswith("1\n00:00:00,000 --> 00:00:00,001\n" + "\n".join(META_LINES) + "\n\n2\n")
+    cues = parse_cues(out)
+    assert (cues[0].start, cues[0].end) == (0, 1)
+    assert [c.text for c in cues[1:]] == ["First cue.", "Second cue."]
+    assert [block.split("\n")[0] for block in out.strip().split("\n\n")] == ["1", "2", "3"]
+
+
+def test_header_vtt_note_block_is_ignored_by_parsers():
+    out = convert(HEADER_VTT, "vtt", header=META)
+    assert out.startswith("WEBVTT\n\nNOTE\n" + "\n".join(META_LINES) + "\n\n00:00:00.000 --> ")
+    assert [(c.start, c.text) for c in parse_cues(out)] == [(0, "First cue."), (3000, "Second cue.")]
+
+
+def test_header_txt_then_blank_line_then_paragraphs():
+    out = convert(HEADER_VTT, "txt", header=META)
+    assert out == "\n".join(META_LINES) + "\n\nFirst cue. Second cue.\n"
+    assert convert(HEADER_VTT, "txt", "sentences", header=META).endswith("\n\nFirst cue.\nSecond cue.\n")
+
+
+def test_header_none_or_no_cues_changes_nothing():
+    for fmt in ("srt", "vtt", "txt"):
+        assert convert(HEADER_VTT, fmt, header=None) == convert(HEADER_VTT, fmt)
+    assert convert("WEBVTT\n\n", "srt", header=META) == ""
+    assert convert("WEBVTT\n\n", "vtt", header=META) == "WEBVTT\n"

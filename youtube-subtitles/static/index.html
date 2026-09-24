@@ -16,365 +16,365 @@
     </script>
     <!-- Tailwind CSS (Play CDN) -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Inter from Google Fonts -->
+    <script>
+        // shadcn/ui style color tokens: each is an HSL triplet defined in the <style> block below.
+        window.tailwind = window.tailwind || {};
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        border: 'hsl(var(--border) / <alpha-value>)',
+                        input: 'hsl(var(--input) / <alpha-value>)',
+                        ring: 'hsl(var(--ring) / <alpha-value>)',
+                        background: 'hsl(var(--background) / <alpha-value>)',
+                        foreground: 'hsl(var(--foreground) / <alpha-value>)',
+                        primary: { DEFAULT: 'hsl(var(--primary) / <alpha-value>)', foreground: 'hsl(var(--primary-foreground) / <alpha-value>)' },
+                        secondary: { DEFAULT: 'hsl(var(--secondary) / <alpha-value>)', foreground: 'hsl(var(--secondary-foreground) / <alpha-value>)' },
+                        destructive: { DEFAULT: 'hsl(var(--destructive) / <alpha-value>)', foreground: 'hsl(var(--destructive-foreground) / <alpha-value>)' },
+                        muted: { DEFAULT: 'hsl(var(--muted) / <alpha-value>)', foreground: 'hsl(var(--muted-foreground) / <alpha-value>)' },
+                        accent: { DEFAULT: 'hsl(var(--accent) / <alpha-value>)', foreground: 'hsl(var(--accent-foreground) / <alpha-value>)' },
+                        card: { DEFAULT: 'hsl(var(--card) / <alpha-value>)', foreground: 'hsl(var(--card-foreground) / <alpha-value>)' },
+                    },
+                    borderRadius: { lg: 'var(--radius)', md: 'calc(var(--radius) - 2px)', sm: 'calc(var(--radius) - 4px)' },
+                    fontFamily: {
+                        sans: ['Geist', 'Inter', 'system-ui', '-apple-system', 'Segoe UI', 'Apple SD Gothic Neo', 'Malgun Gothic', 'sans-serif'],
+                        mono: ['"Geist Mono"', 'ui-monospace', 'SFMono-Regular', 'Menlo', 'Consolas', 'monospace'],
+                    },
+                },
+            },
+        };
+    </script>
+    <!-- Geist and Geist Mono from Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400&display=swap" rel="stylesheet">
     <style>
-        /* --- Theme tokens (same approach as the GGGI AI Playground page) --- */
-        :root[data-theme="light"] {
-            --bg-color: #f0f9f8;
-            --bg-aurora-1: rgba(0, 169, 157, 0.15);
-            --bg-aurora-2: rgba(74, 222, 128, 0.1);
-            --bg-aurora-stop: rgba(240, 249, 248, 0);
-            --card-bg: rgba(255, 255, 255, 0.8);
-            --card-border: rgba(0, 169, 157, 0.2);
-            --card-shadow: 0 10px 30px rgba(0, 121, 107, 0.08), 0 2px 6px rgba(0, 0, 0, 0.04);
-            --text-primary: #0f172a;
-            --text-secondary: #334155;
-            --text-tertiary: #5b6b80;
-            --title-color: #00796b;
-            --accent-color: #00796b;
-            --accent-glow: rgba(0, 169, 157, 0.1);
-            --tag-text: #00796d;
-            --tag-bg: rgba(0, 169, 157, 0.1);
-            --hover-bg: rgba(0, 0, 0, 0.04);
-            --toggle-bg: #ffffff;
-            --toggle-border: rgba(0, 0, 0, 0.08);
-            --input-bg: #ffffff;
-            --input-border: rgba(15, 23, 42, 0.16);
-            --btn-bg: #00796b;
-            --btn-bg-hover: #00695d;
-            --btn-text: #ffffff;
-            --btn2-bg: #ffffff;
-            --btn2-border: rgba(0, 121, 107, 0.45);
-            --seg-bg: rgba(15, 23, 42, 0.05);
-            --seg-active-bg: #ffffff;
-            --ring: #00A99D;
-            --divider: rgba(15, 23, 42, 0.08);
-            --pre-bg: rgba(248, 250, 252, 0.9);
-            --thumb-bg: #e2f3f1;
-            --danger-bg: #fef2f2;
-            --danger-border: #fecaca;
-            --danger-text: #b91c1c;
+        /* --- Design tokens (shadcn/ui "New York", zinc). Values are HSL triplets: use hsl(var(--x)). --- */
+        :root, :root[data-theme="light"] {
+            --background: 0 0% 100%;
+            --foreground: 240 10% 3.9%;
+            --card: 0 0% 100%;
+            --card-foreground: 240 10% 3.9%;
+            --muted: 240 4.8% 95.9%;
+            --muted-foreground: 240 3.8% 46.1%;
+            --border: 240 5.9% 90%;
+            --input: 240 5.9% 90%;
+            --primary: 240 5.9% 10%;
+            --primary-foreground: 0 0% 98%;
+            --secondary: 240 4.8% 95.9%;
+            --secondary-foreground: 240 5.9% 10%;
+            --accent: 240 4.8% 95.9%;
+            --accent-foreground: 240 5.9% 10%;
+            --destructive: 0 84.2% 60.2%;
+            --destructive-foreground: 0 0% 98%;
+            --ring: 240 5.9% 10%;
+            --radius: 0.5rem;
+            color-scheme: light;
         }
-
         :root[data-theme="dark"] {
-            --bg-color: #020617;
-            --bg-aurora-1: rgba(0, 169, 157, 0.4);
-            --bg-aurora-2: rgba(74, 222, 128, 0.35);
-            --bg-aurora-stop: rgba(2, 6, 23, 0);
-            --card-bg: rgba(15, 23, 42, 0.6);
-            --card-border: rgba(255, 255, 255, 0.1);
-            --card-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
-            --text-primary: #e2e8f0;
-            --text-secondary: #94a3b8;
-            --text-tertiary: #8291a7;
-            --title-color: #5eead4;
-            --accent-color: #5eead4;
-            --accent-glow: rgba(0, 169, 157, 0.2);
-            --tag-text: #5eead4;
-            --tag-bg: rgba(20, 184, 166, 0.2);
-            --hover-bg: rgba(255, 255, 255, 0.08);
-            --toggle-bg: rgba(15, 23, 42, 0.6);
-            --toggle-border: rgba(255, 255, 255, 0.1);
-            --input-bg: rgba(2, 6, 23, 0.55);
-            --input-border: rgba(255, 255, 255, 0.14);
-            --btn-bg: #00A99D;
-            --btn-bg-hover: #14b8a6;
-            --btn-text: #022c28;
-            --btn2-bg: rgba(15, 23, 42, 0.6);
-            --btn2-border: rgba(94, 234, 212, 0.4);
-            --seg-bg: rgba(255, 255, 255, 0.06);
-            --seg-active-bg: rgba(0, 169, 157, 0.25);
-            --ring: #5eead4;
-            --divider: rgba(255, 255, 255, 0.08);
-            --pre-bg: rgba(2, 6, 23, 0.6);
-            --thumb-bg: rgba(0, 169, 157, 0.12);
-            --danger-bg: rgba(127, 29, 29, 0.35);
-            --danger-border: rgba(248, 113, 113, 0.45);
-            --danger-text: #fecaca;
+            --background: 240 10% 3.9%;
+            --foreground: 0 0% 98%;
+            --card: 240 10% 3.9%;
+            --card-foreground: 0 0% 98%;
+            --muted: 240 3.7% 15.9%;
+            --muted-foreground: 240 5% 64.9%;
+            --border: 240 3.7% 15.9%;
+            --input: 240 3.7% 15.9%;
+            --primary: 0 0% 98%;
+            --primary-foreground: 240 5.9% 10%;
+            --secondary: 240 3.7% 15.9%;
+            --secondary-foreground: 0 0% 98%;
+            --accent: 240 3.7% 15.9%;
+            --accent-foreground: 0 0% 98%;
+            --destructive: 0 62.8% 30.6%;
+            --destructive-foreground: 0 0% 98%;
+            --ring: 240 4.9% 83.9%;
+            color-scheme: dark;
         }
 
         html { -webkit-text-size-adjust: 100%; }
-
+        * { border-color: hsl(var(--border)); }
         body {
-            font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif;
-            background-color: var(--bg-color);
-            color: var(--text-primary);
+            font-family: Geist, Inter, system-ui, -apple-system, 'Segoe UI', 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif;
+            background-color: hsl(var(--background));
+            color: hsl(var(--foreground));
             overflow-x: hidden;
-            transition: background-color 0.5s ease, color 0.5s ease;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
         }
 
-        /* --- Dynamic aurora background --- */
-        body::before {
-            content: '';
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            width: 200vw;
-            height: 200vh;
-            will-change: transform;
-            z-index: -1;
-            pointer-events: none;
-            transition: background 0.5s ease;
-            background:
-                radial-gradient(circle at 15% 25%, var(--bg-aurora-1) 0%, var(--bg-aurora-stop) 70%),
-                radial-gradient(circle at 85% 75%, var(--bg-aurora-2) 0%, var(--bg-aurora-stop) 70%);
-            animation: aurora 20s linear infinite;
-        }
-        @keyframes aurora {
-            0% { transform: translate(-50%, -50%) rotate(0deg) scale(1); }
-            50% { transform: translate(-50%, -50%) rotate(180deg) scale(1.5); }
-            100% { transform: translate(-50%, -50%) rotate(360deg) scale(1); }
+        /* --- Focus: ring-1 ring-ring, with a ring-offset-2 for buttons and chips --- */
+        :focus-visible { outline: none; }
+        .focus-ring:focus-visible, .btn:focus-visible, a:focus-visible, pre:focus-visible, .selected-line:focus-visible {
+            outline: none;
+            box-shadow: 0 0 0 2px hsl(var(--background)), 0 0 0 3px hsl(var(--ring));
         }
 
-        /* --- Text helpers --- */
-        .main-title { color: var(--title-color); }
-        .t-2 { color: var(--text-secondary); }
-        .t-3 { color: var(--text-tertiary); }
-        .t-accent { color: var(--accent-color); }
-        .divider { border-color: var(--divider); }
-
-        /* --- Glass card --- */
-        .glass {
-            background-color: var(--card-bg);
-            -webkit-backdrop-filter: blur(12px);
-            backdrop-filter: blur(12px);
-            border: 1px solid var(--card-border);
-            box-shadow: var(--card-shadow);
-            transition: background-color 0.5s ease, border-color 0.3s ease;
+        /* --- Input (shadcn Input) --- */
+        .field {
+            display: flex; width: 100%; border-radius: calc(var(--radius) - 2px);
+            border: 1px solid hsl(var(--input)); background-color: hsl(var(--background));
+            color: hsl(var(--foreground)); font-size: 0.875rem;
+            box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+            transition: border-color 0.15s ease, box-shadow 0.15s ease;
         }
-        .fade-in { animation: fade-in-up 0.45s ease-out both; }
-        @keyframes fade-in-up { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+        .field::placeholder { color: hsl(var(--muted-foreground)); opacity: 1; }
+        .field:focus-visible { outline: none; box-shadow: 0 0 0 1px hsl(var(--ring)); }
+        .field[aria-invalid="true"] { border-color: hsl(var(--destructive)); }
+        .field[aria-invalid="true"]:focus-visible { box-shadow: 0 0 0 1px hsl(var(--destructive)); }
+        .field-error { color: hsl(var(--destructive)); }
+        :root[data-theme="dark"] .field-error { color: hsl(0 72% 65%); }
 
-        /* --- Focus rings --- */
-        :focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
-
-        /* --- Header toggles --- */
-        .toggle {
-            background-color: var(--toggle-bg);
-            border: 1px solid var(--toggle-border);
-            transition: all 0.3s ease;
+        /* --- Buttons (shadcn Button variants) --- */
+        .btn {
+            display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem;
+            height: 2.25rem; padding: 0 1rem; border-radius: calc(var(--radius) - 2px);
+            font-size: 0.875rem; font-weight: 500; white-space: nowrap; cursor: pointer;
+            transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
         }
-        #theme-toggle .icon { position: absolute; transition: opacity 0.3s ease, transform 0.3s ease; }
+        .btn:disabled { opacity: 0.5; pointer-events: none; }
+        .btn svg { width: 1rem; height: 1rem; flex: none; }
+        .btn-default { background-color: hsl(var(--primary)); color: hsl(var(--primary-foreground)); box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05); }
+        .btn-default:hover { background-color: hsl(var(--primary) / 0.9); }
+        .btn-outline {
+            border: 1px solid hsl(var(--input)); background-color: hsl(var(--background)); color: hsl(var(--foreground));
+            box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+        }
+        .btn-outline:hover { background-color: hsl(var(--accent)); color: hsl(var(--accent-foreground)); }
+        .btn-ghost { background: transparent; color: hsl(var(--foreground)); }
+        .btn-ghost:hover { background-color: hsl(var(--accent)); color: hsl(var(--accent-foreground)); }
+        .btn-lg { height: 2.5rem; }
+        .btn-sm { height: 2rem; padding: 0 0.75rem; font-size: 0.75rem; }
+        .btn-icon { height: 2rem; width: 2rem; padding: 0; }
+
+        /* --- Tabs (used for EN/KO, Format and Text layout). Radio or aria-pressed driven. --- */
+        .tabs { display: inline-flex; align-items: center; gap: 0.125rem; padding: 0.25rem; border-radius: calc(var(--radius) - 2px); background-color: hsl(var(--muted)); color: hsl(var(--muted-foreground)); }
+        .tab, .seg-label {
+            display: inline-flex; align-items: center; justify-content: center; white-space: nowrap;
+            border-radius: calc(var(--radius) - 4px); font-weight: 500; cursor: pointer;
+            color: hsl(var(--muted-foreground)); transition: color 0.15s ease, background-color 0.15s ease, box-shadow 0.15s ease;
+        }
+        .tab:hover, .seg-label:hover { color: hsl(var(--foreground)); }
+        .tab[aria-pressed="true"], .seg-input:checked + .seg-label {
+            background-color: hsl(var(--background)); color: hsl(var(--foreground));
+            box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+        }
+        .tab:focus-visible, .seg-input:focus-visible + .seg-label { outline: none; box-shadow: 0 0 0 2px hsl(var(--background)), 0 0 0 3px hsl(var(--ring)); }
+        .seg-label { height: 1.75rem; padding: 0 0.75rem; font-size: 0.875rem; width: 100%; }
+        .seg-label.seg-label-text { padding: 0 0.625rem; font-size: 0.8125rem; }
+
+        /* --- Track chips: shadcn Toggle look over a visually hidden radio --- */
+        .chip { position: relative; min-width: 0; }
+        .chip-label {
+            display: inline-flex; align-items: center; gap: 0.375rem; max-width: 100%;
+            height: 2rem; padding: 0 0.75rem; border-radius: calc(var(--radius) - 2px);
+            border: 1px solid hsl(var(--input)); background-color: hsl(var(--background));
+            color: hsl(var(--foreground)); font-size: 0.875rem; font-weight: 500;
+            cursor: pointer; user-select: none;
+            box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+            transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+        }
+        .chip-label:hover { background-color: hsl(var(--accent)); color: hsl(var(--accent-foreground)); }
+        .chip-input:checked + .chip-label {
+            background-color: hsl(var(--primary)); color: hsl(var(--primary-foreground)); border-color: hsl(var(--primary));
+        }
+        .chip-input:focus-visible + .chip-label { box-shadow: 0 0 0 2px hsl(var(--background)), 0 0 0 3px hsl(var(--ring)); }
+        .chip-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .chip-code {
+            flex: none; font-family: 'Geist Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+            font-size: 11px; font-weight: 400; color: hsl(var(--muted-foreground));
+        }
+        .chip-kind { flex: none; font-size: 0.75rem; font-weight: 400; color: hsl(var(--muted-foreground)); }
+        .chip-kind::before { content: '\00B7'; margin-right: 0.375rem; }
+        .chip-input:checked + .chip-label .chip-code,
+        .chip-input:checked + .chip-label .chip-kind { color: hsl(var(--primary-foreground) / 0.7); }
+
+        /* --- Badges --- */
+        .badge {
+            display: inline-flex; align-items: center; gap: 0.25rem; border-radius: calc(var(--radius) - 2px);
+            padding: 0.125rem 0.5rem; font-size: 0.75rem; font-weight: 500; line-height: 1rem;
+        }
+        .badge-secondary { border: 1px solid transparent; background-color: hsl(var(--secondary)); color: hsl(var(--secondary-foreground)); }
+        .badge-outline { border: 1px solid hsl(var(--border)); color: hsl(var(--foreground)); }
+
+        /* --- Selected-track line: "Selected:" label plus an outline badge; click scrolls to the chip --- */
+        .selected-line { max-width: 100%; border-radius: calc(var(--radius) - 2px); cursor: pointer; text-align: left; line-height: 1.5rem; }
+        .selected-line .sel-label { color: hsl(var(--muted-foreground)); font-size: 0.75rem; }
+        .selected-line .sel-badge { display: inline-block; max-width: 100%; vertical-align: middle; transition: background-color 0.15s ease; overflow-wrap: anywhere; }
+        .selected-line:hover .sel-badge { background-color: hsl(var(--accent)); }
+
+        /* --- Alert (destructive) --- */
+        .alert { border: 1px solid hsl(var(--destructive) / 0.5); color: hsl(var(--destructive)); background-color: hsl(var(--background)); }
+        :root[data-theme="dark"] .alert { border-color: hsl(0 62.8% 45% / 0.8); color: hsl(0 72% 72%); }
+        .alert-close { color: inherit; opacity: 0.7; }
+        .alert-close:hover { opacity: 1; background-color: hsl(var(--accent)); }
+
+        /* --- Skeleton, thumbnail, preview --- */
+        .skeleton { border-radius: calc(var(--radius) - 2px); background-color: hsl(var(--muted)); animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
+        @keyframes pulse { 50% { opacity: 0.5; } }
+        .thumb { background-color: hsl(var(--muted)); }
+        .pre-box {
+            background-color: hsl(var(--muted) / 0.5); color: hsl(var(--foreground));
+            font-family: 'Geist Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace;
+            white-space: pre-wrap; overflow-wrap: anywhere; tab-size: 4;
+        }
+
+        /* --- Small spinner inside the Preview and Download buttons --- */
+        .spinner {
+            width: 1rem; height: 1rem; flex: none; border-radius: 9999px;
+            border: 2px solid currentColor; border-right-color: transparent; opacity: 0.8;
+            animation: spin 0.7s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* Result card entrance (JS toggles .fade-in) */
+        .fade-in { animation: fade-in 0.2s ease-out both; }
+        @keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
+
+        /* Theme toggle icons */
+        #theme-toggle .icon { position: absolute; transition: opacity 0.2s ease, transform 0.2s ease; }
         #moon-icon { opacity: 0; transform: scale(0.5) rotate(-90deg); }
         #sun-icon { opacity: 1; transform: scale(1) rotate(0deg); }
         :root[data-theme="light"] #moon-icon { opacity: 1; transform: scale(1) rotate(0deg); }
         :root[data-theme="light"] #sun-icon { opacity: 0; transform: scale(0.5) rotate(90deg); }
 
-        .lang-btn { color: var(--text-secondary); transition: all 0.2s ease; }
-        .lang-btn[aria-pressed="true"] { background-color: var(--accent-glow); color: var(--accent-color); font-weight: 700; }
-        .lang-btn[aria-pressed="false"]:hover { background-color: var(--hover-bg); }
+        /* Thumbnail and title link to the video on YouTube */
+        .thumb-link { cursor: pointer; transition: box-shadow 0.15s ease; }
+        .thumb-link:hover, .thumb-link:focus-visible { outline: none; box-shadow: 0 0 0 1px hsl(var(--ring)); }
+        .thumb-link .thumb-ext { opacity: 0.85; transition: opacity 0.15s ease; }
+        .thumb-link:hover .thumb-ext, .thumb-link:focus-visible .thumb-ext { opacity: 1; }
+        .title-link { color: inherit; text-underline-offset: 4px; border-radius: 2px; }
+        .title-link:hover { text-decoration: underline; }
+        .title-link:focus-visible { outline: none; box-shadow: 0 0 0 2px hsl(var(--background)), 0 0 0 3px hsl(var(--ring)); }
 
-        .brand-tag { background-color: var(--tag-bg); color: var(--tag-text); }
-
-        /* --- Inputs --- */
-        .field {
-            background-color: var(--input-bg);
-            border: 1px solid var(--input-border);
-            color: var(--text-primary);
-            transition: border-color 0.2s ease, box-shadow 0.2s ease;
-        }
-        .field::placeholder { color: var(--text-tertiary); opacity: 1; }
-        .field:focus { outline: none; border-color: var(--ring); box-shadow: 0 0 0 3px var(--accent-glow); }
-        .field[aria-invalid="true"] { border-color: var(--danger-text); }
-
-        /* --- Buttons --- */
-        .btn {
-            display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem;
-            min-height: 44px; padding: 0.625rem 1.25rem; border-radius: 0.75rem;
-            font-weight: 600; font-size: 0.9375rem; white-space: nowrap;
-            transition: background-color 0.2s ease, border-color 0.2s ease, transform 0.1s ease;
-        }
-        .btn:active { transform: translateY(1px); }
-        .btn:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
-        .btn-primary { background-color: var(--btn-bg); color: var(--btn-text); border: 1px solid transparent; }
-        .btn-primary:not(:disabled):hover { background-color: var(--btn-bg-hover); }
-        .btn-secondary { background-color: var(--btn2-bg); color: var(--accent-color); border: 1px solid var(--btn2-border); }
-        .btn-secondary:not(:disabled):hover { background-color: var(--accent-glow); }
-        .btn-ghost { color: var(--accent-color); border: 1px solid var(--btn2-border); background: transparent; min-height: 36px; padding: 0.375rem 0.875rem; font-size: 0.875rem; }
-        .btn-ghost:hover { background-color: var(--accent-glow); }
-
-        /* --- Track chips (radio inputs styled as chips) --- */
-        .chip { position: relative; }
-        .chip-label {
-            display: inline-flex; align-items: center; gap: 0.5rem;
-            min-height: 40px; padding: 0.5rem 0.875rem; border-radius: 9999px;
-            border: 1px solid var(--input-border); background-color: var(--input-bg);
-            color: var(--text-secondary); font-size: 0.875rem; font-weight: 500;
-            cursor: pointer; user-select: none; max-width: 100%;
-            transition: all 0.2s ease-in-out;
-        }
-        .chip-label::before {
-            content: ''; flex: none; width: 0.75rem; height: 0.75rem; border-radius: 9999px;
-            border: 2px solid var(--text-tertiary); transition: all 0.2s ease;
-        }
-        .chip-label:hover { background-color: var(--hover-bg); }
-        .chip-input:checked + .chip-label {
-            background-color: var(--accent-glow); color: var(--accent-color);
-            border-color: var(--accent-color); font-weight: 600;
-        }
-        .chip-input:checked + .chip-label::before {
-            border-color: var(--accent-color); background-color: var(--accent-color);
-            box-shadow: inset 0 0 0 2px var(--input-bg);
-        }
-        .chip-input:focus-visible + .chip-label { outline: 2px solid var(--ring); outline-offset: 2px; }
-        .chip-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-        .chip-code {
-            flex: none; font-size: 0.6875rem; font-weight: 600; letter-spacing: 0.02em;
-            padding: 0.0625rem 0.375rem; border-radius: 0.375rem;
-            background-color: var(--tag-bg); color: var(--tag-text);
-        }
-        /* Source tag on Recommended chips: outlined so it reads differently from the lang code badge. */
-        .chip-kind {
-            flex: none; font-size: 0.6875rem; font-weight: 600; letter-spacing: 0.02em;
-            padding: 0 0.375rem; border-radius: 0.375rem;
-            border: 1px solid var(--input-border); color: var(--text-tertiary);
-        }
-        .chip-input:checked + .chip-label .chip-kind { border-color: var(--btn2-border); color: var(--accent-color); }
-
-        /* --- Segmented control --- */
-        .seg { background-color: var(--seg-bg); }
-        .seg-label {
-            display: flex; align-items: center; justify-content: center;
-            min-height: 40px; padding: 0.375rem 1rem; border-radius: 0.625rem;
-            font-weight: 600; font-size: 0.875rem; letter-spacing: 0.03em;
-            color: var(--text-secondary); cursor: pointer; transition: all 0.2s ease;
-        }
-        .seg-label.seg-label-text { padding-left: 0.5rem; padding-right: 0.5rem; text-align: center; line-height: 1.2; letter-spacing: 0; }
-        @media (min-width: 640px) { .seg-label.seg-label-text { padding-left: 1rem; padding-right: 1rem; } }
-        .seg-label:hover { color: var(--text-primary); }
-        .seg-input:checked + .seg-label {
-            background-color: var(--seg-active-bg); color: var(--accent-color);
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
-        }
-        .seg-input:focus-visible + .seg-label { outline: 2px solid var(--ring); outline-offset: 2px; }
-
-        /* --- Alert, thumbnail, preview --- */
-        .alert { background-color: var(--danger-bg); border: 1px solid var(--danger-border); color: var(--danger-text); }
-        .alert-close { color: var(--danger-text); }
-        .alert-close:hover { background-color: rgba(185, 28, 28, 0.1); }
-        .field-error { color: var(--danger-text); }
-        .thumb { background-color: var(--thumb-bg); }
-        .pre-box {
-            background-color: var(--pre-bg); border: 1px solid var(--divider); color: var(--text-primary);
-            font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace;
-            white-space: pre-wrap; overflow-wrap: anywhere; tab-size: 4;
-        }
-
-        /* --- Spinner --- */
-        .spinner {
-            width: 1.125rem; height: 1.125rem; flex: none; border-radius: 9999px;
-            border: 2.5px solid var(--accent-glow); border-top-color: var(--accent-color);
-            animation: spin 0.8s linear infinite;
-        }
-        @keyframes spin { to { transform: rotate(360deg); } }
-
-        /* Selected-track line under the toolbar: muted text that scrolls to the chip on click. */
-        .selected-line { max-width: 100%; border-radius: 0.375rem; cursor: pointer; }
-        .selected-line:hover { color: var(--accent-color); text-decoration: underline; text-underline-offset: 3px; }
-
-        .footer-link { color: var(--accent-color); text-decoration: underline; text-underline-offset: 3px; }
+        .link { color: hsl(var(--foreground)); text-underline-offset: 4px; font-weight: 500; }
+        .link:hover { text-decoration: underline; }
 
         [hidden] { display: none !important; }
 
         @media (prefers-reduced-motion: reduce) {
-            body::before, .fade-in { animation: none; }
+            *, *::before, *::after { transition-duration: 0.01ms !important; }
+            .fade-in, .skeleton { animation: none; }
             .spinner { animation-duration: 1.6s; }
         }
     </style>
 </head>
-<body class="min-h-screen px-4 py-4 sm:py-6">
+<body class="min-h-screen bg-background text-foreground antialiased flex flex-col">
 
-    <div class="max-w-3xl mx-auto min-h-[calc(100vh-2rem)] flex flex-col">
-
-        <!-- Header: language and theme toggles -->
-        <div class="flex items-center justify-between gap-3">
-            <span aria-hidden="true"></span>
-            <div class="flex items-center gap-2">
-                <div class="toggle flex items-center p-1 rounded-full shadow-lg backdrop-blur-sm" role="group" data-i18n-aria-label="langGroup" aria-label="Language">
-                    <button type="button" class="lang-btn h-9 min-w-[2.5rem] px-2 rounded-full text-sm" data-lang="en" aria-pressed="true" lang="en">EN</button>
-                    <button type="button" class="lang-btn h-9 min-w-[2.5rem] px-2 rounded-full text-sm" data-lang="ko" aria-pressed="false" lang="ko">KO</button>
+    <!-- Header bar -->
+    <header class="h-14 border-b border-border">
+        <div class="max-w-3xl mx-auto h-full px-4 flex items-center justify-between gap-3">
+            <div class="flex items-center gap-2 min-w-0">
+                <span class="flex-none w-5 h-5 rounded-md bg-primary text-primary-foreground flex items-center justify-center text-[9px] font-bold leading-none tracking-tight" aria-hidden="true">CC</span>
+                <span class="text-sm font-semibold truncate" data-i18n="title">YouTube Subtitle Downloader</span>
+            </div>
+            <div class="flex items-center gap-1.5 flex-none">
+                <div class="tabs" role="group" data-i18n-aria-label="langGroup" aria-label="Language">
+                    <button type="button" class="lang-btn tab h-7 px-2.5 text-xs" data-lang="en" aria-pressed="true" lang="en">EN</button>
+                    <button type="button" class="lang-btn tab h-7 px-2.5 text-xs" data-lang="ko" aria-pressed="false" lang="ko">KO</button>
                 </div>
-                <button id="theme-toggle" type="button" data-i18n-aria-label="themeToggle" aria-label="Toggle color theme" class="toggle relative w-11 h-11 rounded-full flex items-center justify-center cursor-pointer shadow-lg backdrop-blur-sm">
-                    <svg id="moon-icon" class="icon w-6 h-6 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"></path></svg>
-                    <svg id="sun-icon" class="icon w-6 h-6 text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>
+                <button id="theme-toggle" type="button" data-i18n-aria-label="themeToggle" aria-label="Toggle color theme" class="btn btn-ghost btn-icon relative">
+                    <svg id="moon-icon" class="icon" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"></path></svg>
+                    <svg id="sun-icon" class="icon" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true"><circle cx="12" cy="12" r="4" stroke-width="2"></circle><path stroke-linecap="round" stroke-width="2" d="M12 2v2m0 16v2M4.93 4.93l1.41 1.41m11.32 11.32 1.41 1.41M2 12h2m16 0h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"></path></svg>
                 </button>
             </div>
         </div>
+    </header>
 
-        <main class="flex-1">
-            <!-- Hero -->
-            <header class="text-center mt-8 sm:mt-12 mb-6 sm:mb-8">
-                <h1 class="main-title text-3xl sm:text-4xl md:text-5xl font-extrabold tracking-tight" data-i18n="title">YouTube Subtitle Downloader</h1>
-                <p class="t-2 mt-3 text-base sm:text-lg max-w-xl mx-auto" data-i18n="subtitle">Paste a YouTube link and download its subtitles as SRT, VTT, or plain text.</p>
-            </header>
+    <main class="flex-1 w-full max-w-3xl mx-auto px-4">
+        <!-- Hero -->
+        <section class="py-10 sm:py-14">
+            <h1 class="text-3xl sm:text-4xl font-semibold tracking-tight" data-i18n="title">YouTube Subtitle Downloader</h1>
+            <p class="text-muted-foreground text-base sm:text-lg mt-3 max-w-xl" data-i18n="subtitle">Paste a YouTube link and download its subtitles as SRT, VTT, or plain text.</p>
+        </section>
 
-            <!-- URL form -->
-            <form id="fetch-form" class="glass rounded-2xl p-4 sm:p-5" novalidate>
-                <label for="url-input" class="block text-sm font-semibold mb-2" data-i18n="urlLabel">YouTube URL or video ID</label>
-                <div class="flex flex-col sm:flex-row gap-3">
+        <div>
+            <!-- URL form (Card) -->
+            <form id="fetch-form" class="rounded-xl border border-border bg-card text-card-foreground shadow-sm p-6" novalidate>
+                <label for="url-input" class="block text-sm font-medium leading-none mb-2.5" data-i18n="urlLabel">YouTube URL or video ID</label>
+                <div class="flex flex-col sm:flex-row gap-2">
                     <input id="url-input" name="url" type="text" inputmode="url" autocomplete="off" autocapitalize="off" spellcheck="false"
-                        class="field w-full sm:flex-1 min-w-0 h-12 px-4 rounded-xl text-base"
+                        class="field h-10 px-3 sm:flex-1 min-w-0"
                         placeholder="https://www.youtube.com/watch?v=..."
                         aria-describedby="url-error">
-                    <button id="fetch-btn" type="submit" class="btn btn-primary h-12 sm:px-6">
-                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-4.35-4.35M17 11a6 6 0 11-12 0 6 6 0 0112 0z"></path></svg>
+                    <button id="fetch-btn" type="submit" class="btn btn-default btn-lg px-4">
+                        <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true"><circle cx="11" cy="11" r="7" stroke-width="2"></circle><path stroke-linecap="round" stroke-width="2" d="m20 20-3.5-3.5"></path></svg>
                         <span data-i18n="fetchBtn">Fetch subtitles</span>
                     </button>
                 </div>
-                <p id="url-error" class="field-error text-sm mt-2" hidden></p>
+                <p id="url-error" class="field-error text-sm font-medium mt-2" hidden></p>
             </form>
 
-            <!-- Loading status (announced) -->
-            <div id="status" class="mt-5 flex items-center justify-center gap-3 t-2 text-sm font-medium" role="status" aria-live="polite">
-                <span id="status-spinner" class="spinner" hidden></span>
-                <span id="status-text"></span>
+            <!-- Loading status (announced). The skeleton reuses the #status-spinner id that setLoading() toggles. -->
+            <div id="status" role="status" aria-live="polite">
+                <p id="status-text" class="mt-8 text-sm text-muted-foreground empty:hidden"></p>
+                <div id="status-spinner" class="mt-3 rounded-xl border border-border bg-card shadow-sm p-6" aria-hidden="true" hidden>
+                    <div class="flex flex-col sm:flex-row gap-4 sm:gap-6">
+                        <div class="skeleton w-full sm:w-56 aspect-video flex-none rounded-lg"></div>
+                        <div class="flex-1 space-y-3 pt-1">
+                            <div class="skeleton h-5 w-4/5"></div>
+                            <div class="skeleton h-4 w-2/5"></div>
+                            <div class="flex gap-2 pt-1"><div class="skeleton h-5 w-14"></div><div class="skeleton h-5 w-20"></div></div>
+                        </div>
+                    </div>
+                    <div class="border-t border-border my-6"></div>
+                    <div class="flex flex-wrap gap-2">
+                        <div class="skeleton h-8 w-28"></div><div class="skeleton h-8 w-24"></div><div class="skeleton h-8 w-32"></div><div class="skeleton h-8 w-20"></div>
+                    </div>
+                </div>
             </div>
             <!-- Screen reader only announcements -->
             <div id="sr-status" class="sr-only" aria-live="polite"></div>
 
-            <!-- Error alert -->
-            <div id="alert" class="alert rounded-2xl p-4 mt-4 flex items-start gap-3" role="alert" hidden>
-                <svg class="w-5 h-5 flex-none mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"></path></svg>
-                <p id="alert-text" class="flex-1 min-w-0 text-sm font-medium break-words"></p>
-                <button id="alert-close" type="button" class="alert-close flex-none -m-1 w-8 h-8 rounded-lg flex items-center justify-center" data-i18n-aria-label="dismiss" aria-label="Dismiss">
-                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12"></path></svg>
+            <!-- Error alert (destructive) -->
+            <div id="alert" class="alert mt-8 rounded-lg p-4 text-sm flex items-start gap-3" role="alert" hidden>
+                <svg class="w-4 h-4 flex-none mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true"><circle cx="12" cy="12" r="10" stroke-width="2"></circle><path stroke-linecap="round" stroke-width="2" d="M12 8v4m0 4h.01"></path></svg>
+                <p id="alert-text" class="flex-1 min-w-0 font-medium leading-5 break-words"></p>
+                <button id="alert-close" type="button" class="alert-close btn btn-ghost btn-icon flex-none -m-1.5 w-7 h-7" data-i18n-aria-label="dismiss" aria-label="Dismiss">
+                    <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 6 6 18M6 6l12 12"></path></svg>
                 </button>
             </div>
 
             <!-- Result card -->
-            <section id="result" class="glass rounded-2xl p-4 sm:p-6 mt-5" aria-labelledby="video-title" hidden>
-                <div class="flex flex-col md:flex-row gap-4 md:gap-6">
-                    <div class="thumb relative w-full md:w-64 flex-none aspect-video rounded-xl overflow-hidden">
+            <section id="result" class="mt-8 rounded-xl border border-border bg-card text-card-foreground shadow-sm p-6" aria-labelledby="video-title" hidden>
+                <div class="flex flex-col sm:flex-row gap-4 sm:gap-6">
+                    <a id="video-link" class="thumb-link group relative block w-full sm:w-56 flex-none rounded-lg" href="#" target="_blank" rel="noopener noreferrer" data-i18n-aria-label="openVideo" aria-label="Open video on YouTube">
+                    <div class="thumb relative w-full aspect-video rounded-lg border border-border overflow-hidden">
                         <img id="thumb-img" class="absolute inset-0 w-full h-full object-cover" alt="" referrerpolicy="no-referrer" hidden>
-                        <div id="thumb-fallback" class="absolute inset-0 flex items-center justify-center t-accent" aria-hidden="true">
-                            <svg class="w-12 h-12 opacity-70" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5.5v13l11-6.5-11-6.5z"></path></svg>
+                        <div id="thumb-fallback" class="absolute inset-0 flex items-center justify-center text-muted-foreground" aria-hidden="true">
+                            <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect x="2" y="4" width="20" height="16" rx="3" stroke-width="1.5"></rect><path stroke-linejoin="round" stroke-width="1.5" d="m10 9 5 3-5 3V9Z"></path></svg>
                         </div>
                     </div>
+                    <!-- External-link affordance in the corner -->
+                    <span class="thumb-ext absolute top-2 right-2 w-6 h-6 rounded-md border border-border bg-background text-foreground flex items-center justify-center shadow-sm" aria-hidden="true">
+                        <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 3h6v6M10 14 21 3M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path></svg>
+                    </span>
+                    </a>
                     <div class="min-w-0 flex-1">
-                        <h2 id="video-title" class="text-lg sm:text-xl font-bold leading-snug break-words"></h2>
-                        <p id="video-channel" class="t-2 text-sm mt-1.5 break-words"></p>
+                        <h2 id="video-title" class="text-lg font-semibold leading-snug tracking-tight break-words"><a id="video-title-link" class="title-link" href="#" target="_blank" rel="noopener noreferrer"></a></h2>
+                        <p id="video-channel" class="text-sm text-muted-foreground mt-1 break-words"></p>
                         <div class="flex flex-wrap items-center gap-2 mt-3">
-                            <span id="video-duration" class="brand-tag inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full">
-                                <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true"><circle cx="12" cy="12" r="9" stroke-width="2"></circle><path stroke-linecap="round" stroke-width="2" d="M12 7v5l3 2"></path></svg>
+                            <span id="video-duration" class="badge badge-secondary">
+                                <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true"><circle cx="12" cy="12" r="9" stroke-width="2"></circle><path stroke-linecap="round" stroke-width="2" d="M12 7v5l3 2"></path></svg>
                                 <span id="video-duration-text"></span>
                             </span>
-                            <span id="track-count" class="brand-tag text-xs font-semibold px-2.5 py-1 rounded-full"></span>
+                            <span id="video-date" class="badge badge-secondary" hidden>
+                                <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2" stroke-width="2"></rect><path stroke-linecap="round" stroke-width="2" d="M16 2v4M8 2v4M3 10h18"></path></svg>
+                                <span id="video-date-text"></span>
+                            </span>
+                            <span id="track-count" class="badge badge-secondary"></span>
                         </div>
                     </div>
                 </div>
 
-                <div class="border-t divider my-5"></div>
+                <div class="border-t border-border my-6"></div>
 
                 <!-- Action toolbar: format, text layout, preview and download (kept above the long track lists) -->
                 <div class="flex flex-col sm:flex-row sm:items-end gap-4 sm:justify-between">
                     <div class="flex flex-col gap-4 min-w-0">
                         <fieldset>
-                            <legend class="text-sm font-semibold mb-2.5" data-i18n="formatLabel">Format</legend>
-                            <div class="seg inline-flex w-full sm:w-auto p-1 rounded-xl gap-1">
+                            <legend class="text-sm font-medium mb-2" data-i18n="formatLabel">Format</legend>
+                            <div class="tabs h-9 w-full sm:w-auto">
                                 <div class="relative flex-1 sm:flex-none"><input class="seg-input sr-only" type="radio" name="fmt" id="fmt-srt" value="srt" checked><label class="seg-label" for="fmt-srt">SRT</label></div>
                                 <div class="relative flex-1 sm:flex-none"><input class="seg-input sr-only" type="radio" name="fmt" id="fmt-vtt" value="vtt"><label class="seg-label" for="fmt-vtt">VTT</label></div>
                                 <div class="relative flex-1 sm:flex-none"><input class="seg-input sr-only" type="radio" name="fmt" id="fmt-txt" value="txt"><label class="seg-label" for="fmt-txt">TXT</label></div>
@@ -382,82 +382,88 @@
                         </fieldset>
                         <!-- Text layout: only shown when TXT is the selected format -->
                         <fieldset id="layout-group" hidden>
-                            <legend class="text-sm font-semibold mb-2.5" data-i18n="layoutLabel">Text layout</legend>
-                            <div class="seg inline-flex w-full sm:w-auto p-1 rounded-xl gap-1">
-                                <div class="relative flex-1 sm:flex-none"><input class="seg-input sr-only" type="radio" name="layout" id="layout-paragraphs" value="paragraphs" checked><label class="seg-label seg-label-text h-full" for="layout-paragraphs" data-i18n="layoutParagraphs">Paragraphs</label></div>
-                                <div class="relative flex-1 sm:flex-none"><input class="seg-input sr-only" type="radio" name="layout" id="layout-sentences" value="sentences"><label class="seg-label seg-label-text h-full" for="layout-sentences" data-i18n="layoutSentences">Sentences</label></div>
-                                <div class="relative flex-1 sm:flex-none"><input class="seg-input sr-only" type="radio" name="layout" id="layout-cues" value="cues"><label class="seg-label seg-label-text h-full" for="layout-cues" data-i18n="layoutCues">Original cues</label></div>
+                            <legend class="text-sm font-medium mb-2" data-i18n="layoutLabel">Text layout</legend>
+                            <div class="tabs h-8 w-full sm:w-auto">
+                                <div class="relative flex-1 sm:flex-none"><input class="seg-input sr-only" type="radio" name="layout" id="layout-paragraphs" value="paragraphs" checked><label class="seg-label seg-label-text h-6" for="layout-paragraphs" data-i18n="layoutParagraphs">Paragraphs</label></div>
+                                <div class="relative flex-1 sm:flex-none"><input class="seg-input sr-only" type="radio" name="layout" id="layout-sentences" value="sentences"><label class="seg-label seg-label-text h-6" for="layout-sentences" data-i18n="layoutSentences">Sentences</label></div>
+                                <div class="relative flex-1 sm:flex-none"><input class="seg-input sr-only" type="radio" name="layout" id="layout-cues" value="cues"><label class="seg-label seg-label-text h-6" for="layout-cues" data-i18n="layoutCues">Original cues</label></div>
                             </div>
                         </fieldset>
                     </div>
-                    <div class="grid grid-cols-2 sm:flex gap-3">
-                        <button id="preview-btn" type="button" class="btn btn-secondary">
+                    <div class="grid grid-cols-2 sm:flex gap-2">
+                        <button id="preview-btn" type="button" class="btn btn-outline">
                             <span id="preview-spinner" class="spinner" hidden></span>
-                            <svg id="preview-icon" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5s8.268 2.943 9.542 7c-1.274 4.057-5.065 7-9.542 7S3.732 16.057 2.458 12z"></path><circle cx="12" cy="12" r="3" stroke-width="2"></circle></svg>
+                            <svg id="preview-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.06 12.35a1 1 0 0 1 0-.7 10.75 10.75 0 0 1 19.88 0 1 1 0 0 1 0 .7 10.75 10.75 0 0 1-19.88 0"></path><circle cx="12" cy="12" r="3" stroke-width="2"></circle></svg>
                             <span data-i18n="previewBtn">Preview</span>
                         </button>
-                        <button id="download-btn" type="button" class="btn btn-primary">
+                        <button id="download-btn" type="button" class="btn btn-default">
                             <span id="download-spinner" class="spinner" hidden></span>
-                            <svg id="download-icon" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v11m0 0l-4-4m4 4l4-4M5 19h14"></path></svg>
+                            <svg id="download-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15V3m0 12-4-4m4 4 4-4M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path></svg>
                             <span data-i18n="downloadBtn">Download</span>
                         </button>
                     </div>
                 </div>
 
                 <!-- Currently selected track; click to scroll to its chip -->
-                <div id="selected-wrap" class="mt-3 min-w-0" hidden>
-                    <button id="selected-line" type="button" class="selected-line t-3 text-xs sm:text-sm text-left break-words" data-i18n-title="selectedJump" title="Show the selected track in the list"></button>
+                <div id="selected-wrap" class="mt-4 min-w-0" hidden>
+                    <button id="selected-line" type="button" class="selected-line" data-i18n-title="selectedJump" title="Show the selected track in the list"></button>
                 </div>
 
                 <!-- Preview panel -->
                 <div id="preview-panel" class="mt-4" hidden>
                     <div class="flex items-center justify-between gap-3 mb-2">
-                        <p id="preview-count" class="t-2 text-xs sm:text-sm min-w-0"></p>
-                        <button id="copy-btn" type="button" class="btn btn-ghost flex-none" data-i18n-title="copyTitle" title="Copies the full subtitle text">
-                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2" stroke-width="2"></rect><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15V5a2 2 0 012-2h10"></path></svg>
+                        <p id="preview-count" class="text-xs text-muted-foreground min-w-0"></p>
+                        <button id="copy-btn" type="button" class="btn btn-outline btn-sm flex-none" data-i18n-title="copyTitle" title="Copies the full subtitle text">
+                            <svg class="!w-3.5 !h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true"><rect x="9" y="9" width="12" height="12" rx="2" stroke-width="2"></rect><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
                             <span id="copy-label" data-i18n="copy">Copy</span>
                         </button>
                     </div>
-                    <pre id="preview-text" class="pre-box rounded-xl p-3 sm:p-4 text-xs sm:text-sm leading-relaxed max-h-96 overflow-auto" tabindex="0" data-i18n-aria-label="previewLabel" aria-label="Subtitle preview"></pre>
+                    <pre id="preview-text" class="pre-box rounded-md border border-border p-4 text-xs leading-relaxed max-h-80 overflow-auto" tabindex="0" data-i18n-aria-label="previewLabel" aria-label="Subtitle preview"></pre>
                 </div>
 
-                <div class="border-t divider my-5"></div>
+                <div class="border-t border-border my-6"></div>
 
-                <!-- Track groups (radio name="track" is shared, so exactly one chip is checked overall) -->
-                <fieldset id="rec-group" class="mb-5" hidden>
-                    <legend class="text-sm font-semibold mb-2.5" data-i18n="recGroup">Recommended</legend>
-                    <div id="rec-chips" class="flex flex-wrap gap-2"></div>
-                    <p id="rec-order" class="t-3 text-xs mt-2"></p>
+                <!-- Track groups (radio name="track" is shared, so exactly one chip is checked overall).
+                     Legends float so the per-group count can sit on the right of the same row. -->
+                <fieldset id="rec-group" class="mb-6" hidden>
+                    <legend class="float-left text-sm font-medium" data-i18n="recGroup">Recommended</legend>
+                    <span id="rec-count" class="float-right text-xs text-muted-foreground leading-5"></span>
+                    <div id="rec-chips" class="clear-both pt-3 flex flex-wrap gap-2"></div>
+                    <p id="rec-order" class="text-xs text-muted-foreground mt-2.5"></p>
                 </fieldset>
 
-                <fieldset id="manual-group" class="mb-5">
-                    <legend class="text-sm font-semibold mb-2.5" data-i18n="manualGroup">Manual subtitles</legend>
-                    <div id="manual-chips" class="flex flex-wrap gap-2"></div>
+                <fieldset id="manual-group" class="mb-6">
+                    <legend class="float-left text-sm font-medium" data-i18n="manualGroup">Manual subtitles</legend>
+                    <span id="manual-count" class="float-right text-xs text-muted-foreground leading-5"></span>
+                    <div id="manual-chips" class="clear-both pt-3 flex flex-wrap gap-2"></div>
                 </fieldset>
 
                 <fieldset id="auto-group">
-                    <legend class="text-sm font-semibold mb-2.5" data-i18n="autoGroup">Auto-generated</legend>
-                    <div id="auto-filter-wrap" class="mb-3" hidden>
+                    <legend class="float-left text-sm font-medium" data-i18n="autoGroup">Auto-generated</legend>
+                    <span id="auto-count" class="float-right text-xs text-muted-foreground leading-5"></span>
+                    <div id="auto-filter-wrap" class="clear-both pt-3" hidden>
                         <label for="auto-filter" class="sr-only" data-i18n="filterLabel">Filter languages</label>
                         <div class="relative max-w-xs">
-                            <svg class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 t-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-4.35-4.35M17 11a6 6 0 11-12 0 6 6 0 0112 0z"></path></svg>
+                            <svg class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true"><circle cx="11" cy="11" r="7" stroke-width="2"></circle><path stroke-linecap="round" stroke-width="2" d="m20 20-3.5-3.5"></path></svg>
                             <input id="auto-filter" type="search" autocomplete="off" spellcheck="false"
-                                class="field w-full h-10 pl-9 pr-3 rounded-lg text-sm"
+                                class="field h-9 pl-9 pr-3"
                                 data-i18n-placeholder="filterPlaceholder" placeholder="Filter languages, e.g. Spanish or es">
                         </div>
                     </div>
-                    <div id="auto-chips" class="flex flex-wrap gap-2"></div>
-                    <p id="auto-empty" class="t-3 text-sm" data-i18n="noMatch" hidden>No languages match.</p>
+                    <div id="auto-chips" class="clear-both pt-3 flex flex-wrap gap-2"></div>
+                    <p id="auto-empty" class="text-sm text-muted-foreground pt-3" data-i18n="noMatch" hidden>No languages match.</p>
                 </fieldset>
             </section>
-        </main>
+        </div>
+    </main>
 
-        <!-- Footer -->
-        <footer class="text-center t-3 text-xs sm:text-sm mt-10 pb-2 leading-relaxed">
+    <!-- Footer -->
+    <footer class="border-t border-border mt-16">
+        <div class="max-w-3xl mx-auto px-4 py-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 text-xs text-muted-foreground leading-relaxed">
             <p data-i18n="footerNote">Runs on your own server. Subtitles are fetched via yt-dlp; nothing is stored.</p>
-            <p class="mt-1"><a class="footer-link" href="https://github.com/ImpactPath/AIAgents/tree/main/youtube-subtitles" target="_blank" rel="noopener noreferrer" data-i18n="footerLink">Source on GitHub</a></p>
-        </footer>
-    </div>
+            <a class="link flex-none" href="https://github.com/ImpactPath/AIAgents/tree/main/youtube-subtitles" target="_blank" rel="noopener noreferrer" data-i18n="footerLink">Source on GitHub</a>
+        </div>
+    </footer>
 
     <!-- Hidden link used to trigger downloads -->
     <a id="download-link" href="#" download hidden aria-hidden="true" tabindex="-1"></a>
@@ -508,6 +514,7 @@
                 kindAuto: 'auto',
                 selectedTrack: 'Selected: {name} · {kind} · {lang}',
                 selectedJump: 'Show the selected track in the list',
+                openVideo: 'Open video on YouTube',
                 langNames: { 'en-orig': 'English (original)', en: 'English', ko: 'Korean' },
                 filterLabel: 'Filter languages',
                 filterPlaceholder: 'Filter languages, e.g. Spanish or es',
@@ -558,6 +565,7 @@
                 kindAuto: '자동',
                 selectedTrack: '선택됨: {name} · {kind} · {lang}',
                 selectedJump: '목록에서 선택한 자막 보기',
+                openVideo: '유튜브에서 영상 열기',
                 langNames: { 'en-orig': '영어(원본)', en: '영어', ko: '한국어' },
                 filterLabel: '언어 검색',
                 filterPlaceholder: '언어 검색 (예: Spanish, es)',
@@ -607,7 +615,8 @@
             statusSpinner: $('status-spinner'), statusText: $('status-text'), sr: $('sr-status'),
             alert: $('alert'), alertText: $('alert-text'), alertClose: $('alert-close'),
             result: $('result'), thumbImg: $('thumb-img'), thumbFallback: $('thumb-fallback'),
-            title: $('video-title'), channel: $('video-channel'),
+            title: $('video-title-link'), channel: $('video-channel'), videoLink: $('video-link'),
+            date: $('video-date'), dateText: $('video-date-text'),
             duration: $('video-duration'), durationText: $('video-duration-text'), trackCount: $('track-count'),
             recGroup: $('rec-group'), recChips: $('rec-chips'), recOrder: $('rec-order'),
             manualGroup: $('manual-group'), manualChips: $('manual-chips'),
@@ -788,10 +797,18 @@
             }
         }
 
+        // Watch URL: prefer the API's url field (http/https only), else build it from the video id.
+        function videoUrl(data) {
+            if (typeof data.url === 'string' && /^https?:\/\//i.test(data.url)) return data.url;
+            return `https://www.youtube.com/watch?v=${encodeURIComponent(data.video_id || '')}`;
+        }
+
         function normalizeInfo(data) {
             const tracks = Array.isArray(data && data.tracks) ? data.tracks : [];
             return {
                 video_id: data.video_id || '',
+                url: videoUrl(data),
+                upload_date: typeof data.upload_date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(data.upload_date) ? data.upload_date : null,
                 title: data.title || data.video_id || '',
                 channel: data.channel || null,
                 duration: typeof data.duration === 'number' ? data.duration : null,
@@ -806,12 +823,22 @@
         function renderMeta() {
             const info = state.info;
             els.title.textContent = info.title;
+            els.title.href = info.url;
+            els.videoLink.href = info.url;
+            els.date.hidden = !info.upload_date;
+            els.dateText.textContent = info.upload_date || '';
             els.channel.textContent = info.channel || t('unknownChannel');
             const d = formatDuration(info.duration);
             els.duration.hidden = !d;
             els.durationText.textContent = d;
             const n = info.tracks.length;
             els.trackCount.textContent = n === 1 ? t('trackCountOne') : t('trackCount', { n: fmtNum(n) });
+            // Per-group counts shown on the right of each group heading.
+            const count = (k) => (k === 1 ? t('trackCountOne') : t('trackCount', { n: fmtNum(k) }));
+            const manualN = info.tracks.filter((tr) => !tr.auto).length;
+            $('rec-count').textContent = count(recommendedTracks(info.tracks).length);
+            $('manual-count').textContent = count(manualN);
+            $('auto-count').textContent = count(n - manualN);
         }
 
         function renderResult() {
@@ -946,10 +973,20 @@
         function renderSelectedLine() {
             const tr = currentTrack();
             els.selectedWrap.hidden = !tr;
-            if (!tr) { els.selectedLine.textContent = ''; return; }
-            els.selectedLine.textContent = t('selectedTrack', {
+            els.selectedLine.textContent = '';
+            if (!tr) return;
+            const text = t('selectedTrack', {
                 name: displayName(tr), kind: t(tr.auto ? 'kindAuto' : 'kindManual'), lang: tr.lang,
             });
+            // Render as a muted "Selected:" label plus an outline badge; the text content stays the full sentence.
+            const cut = text.indexOf(': ');
+            const label = document.createElement('span');
+            label.className = 'sel-label';
+            label.textContent = cut === -1 ? '' : text.slice(0, cut + 1);
+            const badge = document.createElement('span');
+            badge.className = 'sel-badge badge badge-outline';
+            badge.textContent = cut === -1 ? text : text.slice(cut + 2);
+            els.selectedLine.append(label, document.createTextNode(cut === -1 ? '' : ' '), badge);
         }
 
         // Scroll to the checked chip (whichever group it is in) and move focus to it.
