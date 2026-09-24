@@ -68,9 +68,26 @@ cat > "$PLIST" <<PLIST
 PLIST
 chmod 600 "$PLIST"
 
-launchctl bootout "gui/$(id -u)/$LABEL" 2>/dev/null || true
-launchctl bootstrap "gui/$(id -u)" "$PLIST"
-launchctl kickstart -k "gui/$(id -u)/$LABEL"
+DOMAIN="gui/$(id -u)"
+launchctl bootout "$DOMAIN/$LABEL" 2>/dev/null || true
+# bootout returns before launchd has removed the old job; bootstrapping the same label too early fails
+# with "Bootstrap failed: 5: Input/output error". Wait for the label to disappear, then retry a few times.
+i=0
+while launchctl print "$DOMAIN/$LABEL" >/dev/null 2>&1 && [ "$i" -lt 20 ]; do
+    sleep 0.5
+    i=$((i + 1))
+done
+i=0
+until launchctl bootstrap "$DOMAIN" "$PLIST" 2>/dev/null; do
+    i=$((i + 1))
+    if [ "$i" -ge 5 ]; then
+        echo "launchctl bootstrap keeps failing. Run it once more by hand:" >&2
+        echo "  launchctl bootstrap $DOMAIN $PLIST && launchctl kickstart -k $DOMAIN/$LABEL" >&2
+        exit 1
+    fi
+    sleep 1
+done
+launchctl kickstart -k "$DOMAIN/$LABEL"
 
 sleep 2
 if curl -fsS "http://127.0.0.1:$PORT/healthz" >/dev/null; then

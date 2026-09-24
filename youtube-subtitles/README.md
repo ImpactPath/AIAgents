@@ -166,6 +166,13 @@ app a stable public HTTPS address for free.
 Logs: `~/Library/Logs/youtube-subtitles.log`. Update: `git pull` in the repo, then
 `launchctl kickstart -k gui/$(id -u)/com.youtube-subtitles`.
 
+Rotate the MCP key: run the install script again with the new key (any length works; 20 or more random
+letters and digits is a sensible minimum), then change the `X-API-Key` header in the Claude connector. The
+old key stops working the moment the app restarts. If the script ends with
+`Bootstrap failed: 5: Input/output error`, launchd had not finished removing the old job; the plist is
+already written, so run `launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.youtube-subtitles.plist`
+followed by `launchctl kickstart -k gui/$(id -u)/com.youtube-subtitles`.
+
 
 ### Hugging Face Spaces (Docker, requires a PRO subscription)
 
