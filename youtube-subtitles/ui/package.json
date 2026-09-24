@@ -2,7 +2,7 @@
   "name": "youtube-subtitles-ui",
   "version": "1.0.0",
   "private": true,
-  "description": "MCP App view for the subtitle_menu tool. Builds ../app/ui/menu.html.",
+  "description": "MCP App view for the get_video_info tool. Builds ../app/ui/menu.html.",
   "type": "module",
   "scripts": {
     "build": "node build.mjs",

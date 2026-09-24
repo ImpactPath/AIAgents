@@ -1,9 +1,11 @@
-// View for the subtitle_menu tool (MCP Apps). Bundled by build.mjs into ../app/ui/menu.html.
+// View for the get_video_info tool (MCP Apps). Bundled by build.mjs into ../app/ui/menu.html.
 import { App } from "@modelcontextprotocol/ext-apps";
 import type { McpUiHostContext } from "@modelcontextprotocol/ext-apps";
 import type { CallToolResult } from "@modelcontextprotocol/client";
 
-// ---------- Contract (structuredContent of subtitle_menu) ----------
+// ---------- Contract (structuredContent of get_video_info) ----------
+// get_video_info's structuredContent also carries fields for the model (video_id, title, options,
+// menu_hint, ...) and a `translated` flag on each track; the view reads only the fields below.
 
 interface Video {
   video_id: string;
@@ -16,7 +18,7 @@ interface Video {
   thumbnail: string | null;
   original_language: string | null;
 }
-interface Track { lang: string; name: string; auto: boolean; kind: "original" | "auto" }
+interface Track { lang: string; name: string; auto: boolean; kind?: "original" | "auto" }
 interface Option { id: string; label: string }
 interface MenuData {
   video: Video;

@@ -116,17 +116,18 @@ def test_initialize_and_tools_list(client):
     result = r.json()["result"]
     assert result["serverInfo"]["name"] == "youtube-subtitles"
     instructions = result["instructions"]
-    assert "call subtitle_menu" in instructions and "get_download_link" in instructions
-    assert "text menu: present it and wait" in instructions and "call get_subtitles directly" in instructions
+    assert "call get_video_info first" in instructions and "get_download_link" in instructions
+    assert "ask the user in two steps before fetching anything" in instructions
+    assert "skip the questions and call get_subtitles" in instructions and "subtitle_menu" not in instructions
     assert "translate the text yourself" in instructions
     note = client.post("/mcp", json={"jsonrpc": "2.0", "method": "notifications/initialized"},
                        headers={**HEADERS, "Mcp-Session-Id": session_id})
     assert note.status_code == 202
 
     tools = {t["name"]: t for t in rpc(client, "tools/list", id=2).json()["result"]["tools"]}
-    assert set(tools) == {"subtitle_menu", "get_video_info", "get_subtitles", "get_download_link"}
+    assert set(tools) == {"get_video_info", "get_subtitles", "get_download_link"}
     info_tool, subs_tool = tools["get_video_info"], tools["get_subtitles"]
-    assert info_tool["inputSchema"]["required"] == ["url"]
+    assert info_tool["inputSchema"]["required"] == ["url"] and set(info_tool["inputSchema"]["properties"]) == {"url"}
     assert {"tracks", "recommended", "original_language", "published"} <= set(info_tool["outputSchema"]["properties"])
     props = subs_tool["inputSchema"]["properties"]
     assert subs_tool["inputSchema"]["required"] == ["url"]
@@ -147,7 +148,7 @@ def test_initialize_and_tools_list(client):
 def test_mcp_path_without_and_with_trailing_slash(client):
     for path in ("/mcp", "/mcp/"):
         r = rpc(client, "tools/list", path=path, follow_redirects=False)
-        assert r.status_code == 200 and len(r.json()["result"]["tools"]) == 4
+        assert r.status_code == 200 and len(r.json()["result"]["tools"]) == 3
 
 
 def test_get_video_info_filters_and_orders(client):
@@ -157,6 +158,8 @@ def test_get_video_info_filters_and_orders(client):
     assert [(t["lang"], t["auto"]) for t in data["tracks"]] == [
         ("en", False), ("ko", False), ("de", False), ("fr", False), ("en-orig", True), ("es-orig", True),
     ]
+    assert data["tracks"][0] == {"lang": "en", "name": "English", "auto": False, "translated": False,
+                                 "kind": "original"}
     assert data["recommended"] == {"lang": "en", "auto": False}
     assert data["duration"] == "03:32" and data["duration_seconds"] == 212
     assert data["published"] == "2009-10-25" and data["original_language"] == "en"
@@ -165,7 +168,7 @@ def test_get_video_info_filters_and_orders(client):
     assert data["options"]["formats"][0] == {"id": "txt", "label": "Plain text"}
     assert [x["id"] for x in data["options"]["layouts"]] == ["paragraphs", "sentences", "cues"]
     assert data["options"]["actions"] == ["download_link", "summary", "translation", "key_points"]
-    assert "wait" in data["menu_hint"]
+    assert "wait" in data["menu_hint"] and "two steps" in data["menu_hint"]
 
 
 def test_get_video_info_without_orig_track_keeps_one_auto(client, info_holder):
@@ -363,7 +366,7 @@ def test_api_key_guard(client, monkeypatch):
         {"path": "/mcp?key=s3cret-key"},
     ):
         r = rpc(client, "tools/list", **kwargs)
-        assert r.status_code == 200 and len(r.json()["result"]["tools"]) == 4, kwargs
+        assert r.status_code == 200 and len(r.json()["result"]["tools"]) == 3, kwargs
     # The rest of the site ignores the key.
     assert client.get("/healthz").status_code == 200
     assert client.get("/api/info", params={"url": "not-a-url"}).status_code == 400
@@ -479,25 +482,32 @@ def test_get_subtitles_attaches_resource_and_link(client, info_holder):
     assert plain["content"][0]["text"] == call(client, "get_subtitles", url=VID)["content"][0]["text"]
 
 
-# MCP App: subtitle_menu and its ui:// view.
+# MCP App: get_video_info shows the menu through its ui:// view.
 
 MENU_URI = "ui://youtube-subtitles/menu.html"
+MODEL_FIELDS = {"video_id", "title", "channel", "duration_seconds", "duration", "published", "url",
+                "original_language", "tracks", "recommended", "options", "menu_hint"}
+VIEW_FIELDS = {"video", "tracks", "recommended", "formats", "layouts", "defaults", "base_url", "download_template",
+               "labels"}
 
 
 def menu_call(client, capabilities, **arguments):
-    """subtitle_menu on a fresh session whose initialize declared `capabilities`."""
-    return call(client, "subtitle_menu", headers=open_session(client, capabilities), **arguments)
+    """get_video_info on a fresh session whose initialize declared `capabilities`."""
+    return call(client, "get_video_info", headers=open_session(client, capabilities), **arguments)
 
 
-def test_subtitle_menu_listed_with_ui_resource(client):
+def test_get_video_info_listed_with_ui_resource(client):
     tools = {t["name"]: t for t in rpc(client, "tools/list").json()["result"]["tools"]}
-    menu = tools["subtitle_menu"]
-    assert menu["_meta"]["ui"]["resourceUri"] == MENU_URI and menu["title"] == "Subtitle menu"
-    assert menu["inputSchema"]["required"] == ["url"] and set(menu["inputSchema"]["properties"]) == {"url"}
-    assert "Call this when the user shares a YouTube link" in menu["description"]
-    assert {"video", "tracks", "recommended", "formats", "layouts", "defaults", "base_url", "download_template",
-            "labels"} <= set(menu["outputSchema"]["properties"])
-    assert "_meta" not in tools["get_subtitles"]
+    info = tools["get_video_info"]
+    assert info["_meta"]["ui"]["resourceUri"] == MENU_URI
+    assert info["inputSchema"]["required"] == ["url"] and set(info["inputSchema"]["properties"]) == {"url"}
+    assert info["description"].startswith("Look up a YouTube video link: title, channel, duration")
+    assert "Call this first whenever the user shares a YouTube URL or video id" in info["description"]
+    assert "show the interactive subtitle menu" in info["description"]
+    assert MODEL_FIELDS | VIEW_FIELDS <= set(info["outputSchema"]["properties"])
+    track_schema = info["outputSchema"]["$defs"]["TrackOut"]["properties"]
+    assert {"lang", "name", "auto", "translated", "kind"} == set(track_schema)
+    assert "_meta" not in tools["get_subtitles"] and "_meta" not in tools["get_download_link"]
 
 
 def test_menu_resource_read(client):
@@ -509,7 +519,7 @@ def test_menu_resource_read(client):
     assert ui["permissions"] == {"clipboardWrite": {}} and ui["prefersBorder"] is True
 
 
-def test_subtitle_menu_for_apps_client(client, info_holder, monkeypatch):
+def test_get_video_info_for_apps_client(client, info_holder, monkeypatch):
     monkeypatch.setenv("PUBLIC_BASE_URL", "https://host.example/")
     result = menu_call(client, APPS_CAPABILITY, url=f"https://youtu.be/{VID}")
     assert result["isError"] is False
@@ -520,18 +530,25 @@ def test_subtitle_menu_for_apps_client(client, info_holder, monkeypatch):
         "do not call get_subtitles or get_download_link until the user picks an action or asks explicitly."
     )
     data = result["structuredContent"]
+    assert set(data) == MODEL_FIELDS | VIEW_FIELDS
+    # The model's fields, as get_video_info returned them before the menu moved here.
+    assert (data["video_id"], data["title"], data["channel"]) == (VID, "Never Gonna Give You Up", "Rick Astley")
+    assert (data["duration_seconds"], data["duration"], data["published"]) == (212, "03:32", "2009-10-25")
+    assert data["url"] == f"https://www.youtube.com/watch?v={VID}" and data["original_language"] == "en"
+    assert data["options"]["formats"][0] == {"id": "txt", "label": "Plain text"} and "wait" in data["menu_hint"]
+    # The view contract.
     assert data["video"] == {
         "video_id": VID, "title": "Never Gonna Give You Up", "channel": "Rick Astley", "duration": "03:32",
         "duration_seconds": 212, "published": "2009-10-25", "url": f"https://www.youtube.com/watch?v={VID}",
         "thumbnail": f"https://i.ytimg.com/vi/{VID}/hqdefault.jpg", "original_language": "en",
     }
     assert data["tracks"] == [
-        {"lang": "en", "name": "English", "auto": False, "kind": "original"},
-        {"lang": "ko", "name": "Korean", "auto": False, "kind": "original"},
-        {"lang": "de", "name": "German", "auto": False, "kind": "original"},
-        {"lang": "fr", "name": "French", "auto": False, "kind": "original"},
-        {"lang": "en-orig", "name": "English", "auto": True, "kind": "auto"},
-        {"lang": "es-orig", "name": "Spanish", "auto": True, "kind": "auto"},
+        {"lang": "en", "name": "English", "auto": False, "translated": False, "kind": "original"},
+        {"lang": "ko", "name": "Korean", "auto": False, "translated": False, "kind": "original"},
+        {"lang": "de", "name": "German", "auto": False, "translated": False, "kind": "original"},
+        {"lang": "fr", "name": "French", "auto": False, "translated": False, "kind": "original"},
+        {"lang": "en-orig", "name": "English", "auto": True, "translated": False, "kind": "auto"},
+        {"lang": "es-orig", "name": "Spanish", "auto": True, "translated": False, "kind": "auto"},
     ]
     assert data["recommended"] == {"lang": "en", "auto": False}
     assert data["formats"] == [{"id": "txt", "label": "TXT"}, {"id": "srt", "label": "SRT"},
@@ -558,9 +575,19 @@ def test_subtitle_menu_for_apps_client(client, info_holder, monkeypatch):
     assert r.status_code == 200 and "Line 0 from ko manual." in r.text
 
 
-def test_subtitle_menu_text_menu_for_client_without_apps(client, info_holder):
+TWO_STEP_END = (
+    "Ask the user in two steps before fetching anything: step 1, what to do (download the subtitle file, summary, "
+    "translation, key points); step 2, only if they chose download, which subtitle track (list the tracks by name "
+    "and code, recommended first) and which format (TXT default, SRT, VTT). When the user's request is already "
+    "explicit (for example 'summarize this video'), skip the questions and call get_subtitles with the recommended "
+    "track as TXT paragraphs."
+)
+
+
+def test_get_video_info_text_menu_for_client_without_apps(client, info_holder):
     result = menu_call(client, {}, url=VID)
     assert result["isError"] is False and result["structuredContent"]["base_url"] == "http://testserver"
+    assert set(result["structuredContent"]) == MODEL_FIELDS | VIEW_FIELDS
     assert text_of(result) == "\n".join([
         f"Subtitle menu for 'Never Gonna Give You Up' (Rick Astley, 03:32, 2009-10-25): "
         f"https://www.youtube.com/watch?v={VID}",
@@ -576,35 +603,38 @@ def test_subtitle_menu_text_menu_for_client_without_apps(client, info_holder):
         "Formats (fmt): TXT (txt), SRT (srt), VTT (vtt); default txt.",
         "Text layout for TXT (layout): Paragraphs (paragraphs), Sentences (sentences), Original cues (cues); "
         "default paragraphs.",
-        "Actions: download link (get_download_link), preview the text (get_subtitles), summarize, translate, "
-        "key points.",
+        "Actions: download the subtitle file (get_download_link), preview the text (get_subtitles), summarize, "
+        "translate, key points.",
         "",
-        "Ask the user what they want.",
+        TWO_STEP_END,
     ])
+    # The default test session declared no apps support either.
+    assert text_of(call(client, "get_video_info", url=VID)) == text_of(result)
     # A client that lists the extension without the app MIME type cannot render it either.
     other = {"extensions": {"io.modelcontextprotocol/ui": {"mimeTypes": ["text/html"]}}}
     assert text_of(menu_call(client, other, url=VID)) == text_of(result)
 
 
-def test_subtitle_menu_without_declared_capabilities(info_holder):
+def test_get_video_info_without_declared_capabilities(info_holder):
     """No client capabilities at all (a direct call): the text menu plus a note that the view may be shown."""
     import anyio
     from mcp.server.mcpserver import Context
 
-    from app.mcp_server import UNDECLARED_APPS_NOTE, subtitle_menu
+    from app.mcp_server import UNDECLARED_APPS_NOTE, get_video_info
 
-    result = anyio.run(lambda: subtitle_menu(VID, Context()))
+    result = anyio.run(lambda: get_video_info(VID, Context()))
     note, _, menu = result.content[0].text.partition("\n\n")
     assert note == UNDECLARED_APPS_NOTE and "renders MCP Apps" in note
     assert menu.startswith("Subtitle menu for 'Never Gonna Give You Up'")
-    assert menu.endswith("\nAsk the user what they want.")
+    assert menu.endswith("\n" + TWO_STEP_END)
     data = result.structured_content
     assert data["base_url"] == "" and data["download_template"].startswith(f"/api/download?url={VID}&lang={{lang}}")
-    assert data["tracks"][0] == {"lang": "en", "name": "English", "auto": False, "kind": "original"}
+    assert data["tracks"][0] == {"lang": "en", "name": "English", "auto": False, "translated": False,
+                                 "kind": "original"}
 
 
 def test_session_required_and_delete_ends_it(client):
-    no_session = rpc(client, "tools/call", {"name": "subtitle_menu", "arguments": {"url": VID}}, session=False)
+    no_session = rpc(client, "tools/call", {"name": "get_video_info", "arguments": {"url": VID}}, session=False)
     assert no_session.status_code == 400 and "Missing session ID" in no_session.json()["error"]["message"]
     unknown = rpc(client, "tools/list", headers={"Mcp-Session-Id": "not-a-session"})
     assert unknown.status_code == 404
@@ -617,7 +647,7 @@ def test_session_required_and_delete_ends_it(client):
     assert rpc(client, "tools/list").status_code == 200  # other sessions are unaffected
 
 
-def test_subtitle_menu_fetches_info_in_a_worker_thread(client, info_holder, monkeypatch):
+def test_get_video_info_fetches_info_in_a_worker_thread(client, info_holder, monkeypatch):
     seen = []
 
     def fake_info(vid):
@@ -632,13 +662,13 @@ def test_subtitle_menu_fetches_info_in_a_worker_thread(client, info_holder, monk
     result = menu_call(client, APPS_CAPABILITY, url=VID)
     assert seen == ["worker thread"]
     data = result["structuredContent"]
-    assert data["tracks"] == [{"lang": "en", "name": "English", "auto": True, "kind": "auto"}]
+    assert data["tracks"] == [{"lang": "en", "name": "English", "auto": True, "translated": False, "kind": "auto"}]
     assert data["recommended"] == {"lang": "en", "auto": True} and data["video"]["original_language"] is None
     assert "(1 track: en (auto))" in text_of(result)
 
 
 @pytest.mark.parametrize("url,message", [("not a url", youtube.INVALID_URL), (VID, youtube.NO_SUBTITLES)])
-def test_subtitle_menu_errors(client, info_holder, url, message):
+def test_get_video_info_errors_for_apps_client(client, info_holder, url, message):
     info_holder["info"] = make_info(tracks=[])
     result = menu_call(client, APPS_CAPABILITY, url=url)
     assert result["isError"] is True and message in text_of(result)

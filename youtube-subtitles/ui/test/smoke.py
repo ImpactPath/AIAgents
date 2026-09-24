@@ -47,13 +47,53 @@ def label_sets() -> dict:
     return {"en": en, "ko": ko}
 
 
+TITLE = "Green growth in practice: lessons from ten years of national plans"
+CHANNEL = "Global Green Growth Institute"
+TRACKS = [
+    {"lang": "ko", "name": "Korean", "auto": False, "translated": False, "kind": "original"},
+    {"lang": "en", "name": "English", "auto": False, "translated": False, "kind": "original"},
+    {"lang": "en-orig", "name": "English (auto-generated)", "auto": True, "translated": False, "kind": "auto"},
+]
+
+# get_video_info's result: structuredContent holds the model's fields and the view contract side by side.
 SAMPLE_RESULT = {
-    "content": [{"type": "text", "text": "Interactive menu shown for 'Sample talk' (3 tracks: ko, en, en-orig)."}],
+    "content": [{"type": "text", "text": (
+        f"Interactive menu shown for '{TITLE}' (3 tracks: ko, en, en-orig (auto)). The user is choosing a track, "
+        "format and action in the menu. Wait for their choice; do not call get_subtitles or get_download_link "
+        "until the user picks an action or asks explicitly."
+    )}],
     "structuredContent": {
+        # Fields for the model (the view ignores them).
+        "video_id": "dQw4w9WgXcQ",
+        "title": TITLE,
+        "channel": CHANNEL,
+        "duration_seconds": 1685,
+        "duration": "28:05",
+        "published": "2024-05-17",
+        "url": VIDEO_URL,
+        "original_language": "en",
+        "options": {
+            "formats": [
+                {"id": "txt", "label": "Plain text"},
+                {"id": "srt", "label": "SubRip (SRT), with timestamps"},
+                {"id": "vtt", "label": "WebVTT (VTT), with timestamps"},
+            ],
+            "layouts": [
+                {"id": "paragraphs", "label": "Paragraphs (sentences joined, blank line between paragraphs)"},
+                {"id": "sentences", "label": "One sentence per line"},
+                {"id": "cues", "label": "Original caption cues"},
+            ],
+            "actions": ["download_link", "summary", "translation", "key_points"],
+        },
+        "menu_hint": "If the interactive subtitle menu is shown, the user picks there: wait for their choice.",
+        # Shared by both.
+        "tracks": TRACKS,
+        "recommended": {"lang": "en", "auto": False},
+        # The view contract.
         "video": {
             "video_id": "dQw4w9WgXcQ",
-            "title": "Green growth in practice: lessons from ten years of national plans",
-            "channel": "Global Green Growth Institute",
+            "title": TITLE,
+            "channel": CHANNEL,
             "duration": "28:05",
             "duration_seconds": 1685,
             "published": "2024-05-17",
@@ -61,12 +101,6 @@ SAMPLE_RESULT = {
             "thumbnail": "https://i.ytimg.com/vi/dQw4w9WgXcQ/hqdefault.jpg",
             "original_language": "en",
         },
-        "tracks": [
-            {"lang": "ko", "name": "Korean", "auto": False, "kind": "original"},
-            {"lang": "en", "name": "English", "auto": False, "kind": "original"},
-            {"lang": "en-orig", "name": "English (auto-generated)", "auto": True, "kind": "auto"},
-        ],
-        "recommended": {"lang": "en", "auto": False},
         "formats": [{"id": "txt", "label": "TXT"}, {"id": "srt", "label": "SRT"}, {"id": "vtt", "label": "VTT"}],
         "layouts": [
             {"id": "paragraphs", "label": "Paragraphs"},

@@ -1,13 +1,15 @@
-"""MCP server (Model Context Protocol) exposing the subtitle downloader as four tools.
+"""MCP server (Model Context Protocol) exposing the subtitle downloader as three tools.
 
 Mounted by app.main at /mcp (streamable HTTP with sessions, JSON responses), so
 Claude and ChatGPT connectors can call it. The tools reuse the same cached
 yt-dlp lookup, track rules, and converter as the REST API. Subtitle tracks are
 also readable as resources (subtitles://...), and get_subtitles attaches the
 track as an embedded resource plus a resource link so clients can show a file.
-subtitle_menu is an MCP App (io.modelcontextprotocol/ui): hosts that render apps
+get_video_info is an MCP App (io.modelcontextprotocol/ui): hosts that render apps
 show the interactive menu at ui://youtube-subtitles/menu.html (built from ui/
-into app/ui/menu.html); other clients get the same menu as text.
+into app/ui/menu.html); other clients get the same menu as text. The menu lives on
+get_video_info because clients that load tools lazily through a keyword search
+find that tool first.
 """
 
 from __future__ import annotations
@@ -34,24 +36,25 @@ from app.convert import convert, format_duration
 
 log = logging.getLogger(__name__)
 
-INSTRUCTIONS = (
-    "Fetch YouTube subtitles. When the user shares a YouTube link, call subtitle_menu; it renders an "
-    "interactive menu where the user picks the track, format and action, so do not call get_subtitles or "
-    "get_download_link until they choose or state what they want. If the client cannot render apps, the "
-    "tool returns a text menu: present it and wait. When the user's request is already explicit (e.g. "
-    "'summarize this video'), skip the menu and call get_subtitles directly (the recommended track as TXT "
-    "paragraphs is the default). get_video_info lists the tracks without showing a menu. To give the user "
-    "a file, call get_download_link and show its download_url "
-    "as a clickable link; it does not fetch the subtitles. Machine-translated YouTube captions are "
-    "rate-limited and hidden; download the original language and translate the text yourself if another "
-    "language is needed. get_subtitles also attaches the file as a resource; tell the user it is attached "
-    "if the client shows it."
+TWO_STEP_GUIDANCE = (
+    "ask the user in two steps before fetching anything: step 1, what to do (download the subtitle file, "
+    "summary, translation, key points); step 2, only if they chose download, which subtitle track (list the "
+    "tracks by name and code, recommended first) and which format (TXT default, SRT, VTT). When the user's "
+    "request is already explicit (for example 'summarize this video'), skip the questions and call "
+    "get_subtitles with the recommended track as TXT paragraphs."
 )
-
+INSTRUCTIONS = (
+    "Fetch YouTube subtitles. When the user shares a YouTube link, call get_video_info first; on clients that "
+    "render MCP Apps it shows an interactive menu where the user picks the track, format and action, so wait "
+    "for their choice. On other clients, " + TWO_STEP_GUIDANCE + " To give the user a file, call "
+    "get_download_link and show its download_url as a clickable link; it is a public HTTPS address that works "
+    "on any device. Machine-translated YouTube captions are rate-limited and hidden; download the original "
+    "language and translate the text yourself if another language is needed. get_subtitles also attaches the "
+    "file as a resource; tell the user it is attached if the client shows it."
+)
 MENU_HINT = (
-    "If the user gave no instruction, present the tracks (recommended first), formats, layouts and actions "
-    "below as a short menu in the user's language and wait for a choice before calling get_subtitles or "
-    "get_download_link."
+    "If the interactive subtitle menu is shown, the user picks there: wait for their choice. Otherwise, "
+    + TWO_STEP_GUIDANCE
 )
 OPTIONS = {
     "formats": [
@@ -89,7 +92,7 @@ MENU_PLACEHOLDER_HTML = (
 )
 UNDECLARED_APPS_NOTE = (
     "This client did not declare whether it renders MCP Apps. If the interactive subtitle menu is shown, the "
-    "user picks there: keep your reply short and wait. Otherwise present this menu and wait."
+    "user picks there: keep your reply short and wait. Otherwise ask the user as described at the end."
 )
 MENU_FORMATS = [{"id": "txt", "label": "TXT"}, {"id": "srt", "label": "SRT"}, {"id": "vtt", "label": "VTT"}]
 MENU_LAYOUTS = [
@@ -140,6 +143,7 @@ class TrackOut(TypedDict):
     name: str
     auto: bool
     translated: bool
+    kind: Literal["original", "auto"]
 
 
 class RecommendedOut(TypedDict):
@@ -158,7 +162,21 @@ class OptionsOut(TypedDict):
     actions: list[str]
 
 
+class MenuVideoOut(TypedDict):
+    video_id: str
+    title: str
+    channel: str | None
+    duration: str | None
+    duration_seconds: int | None
+    published: str | None
+    url: str
+    thumbnail: str | None
+    original_language: str | None
+
+
 class VideoInfoOut(TypedDict):
+    """get_video_info's structuredContent: the fields for the model plus the view contract (video ... labels)."""
+
     video_id: str
     title: str
     channel: str | None
@@ -171,6 +189,13 @@ class VideoInfoOut(TypedDict):
     recommended: RecommendedOut | None
     options: OptionsOut
     menu_hint: str
+    video: MenuVideoOut
+    formats: list[OptionOut]
+    layouts: list[OptionOut]
+    defaults: dict[str, str]
+    base_url: str
+    download_template: str
+    labels: dict[str, dict[str, str]]
 
 
 class DownloadTrackOut(TypedDict):
@@ -185,37 +210,6 @@ class DownloadLinkOut(TypedDict):
     filename: str
     track: DownloadTrackOut
     note: str
-
-
-class MenuVideoOut(TypedDict):
-    video_id: str
-    title: str
-    channel: str | None
-    duration: str | None
-    duration_seconds: int | None
-    published: str | None
-    url: str
-    thumbnail: str | None
-    original_language: str | None
-
-
-class MenuTrackOut(TypedDict):
-    lang: str
-    name: str
-    auto: bool
-    kind: Literal["original", "auto"]
-
-
-class SubtitleMenuOut(TypedDict):
-    video: MenuVideoOut
-    tracks: list[MenuTrackOut]
-    recommended: RecommendedOut | None
-    formats: list[OptionOut]
-    layouts: list[OptionOut]
-    defaults: dict[str, str]
-    base_url: str
-    download_template: str
-    labels: dict[str, dict[str, str]]
 
 
 def _register(fn, *, structured: bool):
@@ -330,37 +324,6 @@ def _truncate(text: str, max_chars: int) -> str:
     return f"{kept}\n[truncated: {len(text) - len(kept)} more characters]"
 
 
-async def get_video_info(url: str) -> VideoInfoOut:
-    """Look up a YouTube video and list its downloadable subtitle tracks.
-
-    When the user shares a YouTube link, call subtitle_menu instead (it shows the menu). Use this tool
-    when you need the track list as data, for example to answer a question about the available languages.
-    `url` is a YouTube URL (watch, youtu.be, shorts, live, embed) or an 11-character video id.
-    Returns title, channel, duration, published date (YYYY-MM-DD), original_language, `tracks`
-    (manual uploader tracks first, then original-language auto captions such as "en-orig"; each
-    with lang, name, auto, translated), `recommended` ({lang, auto} to pass to get_subtitles or
-    get_download_link, or null), `options` (formats, layouts and actions for the menu) and `menu_hint`.
-    Machine-translated auto captions are not listed because YouTube rate-limits them.
-    """
-    info = await _load(url)
-    tracks = youtube.downloadable_tracks(info)
-    rec = youtube.recommended_track(info)
-    return VideoInfoOut(
-        video_id=info.video_id,
-        title=info.title,
-        channel=info.channel,
-        duration_seconds=info.duration,
-        duration=format_duration(info.duration) or None,
-        published=info.upload_date,
-        url=info.webpage_url,
-        original_language=info.original_language,
-        tracks=[TrackOut(**t.public()) for t in tracks],
-        recommended=RecommendedOut(lang=rec.lang, auto=rec.auto) if rec else None,
-        options=OPTIONS,
-        menu_hint=MENU_HINT,
-    )
-
-
 async def get_subtitles(
     url: str,
     lang: str | None = None,
@@ -455,7 +418,7 @@ async def get_download_link(
     )
 
 
-def _text_menu(data: SubtitleMenuOut) -> str:
+def _text_menu(data: VideoInfoOut) -> str:
     """The subtitle menu as plain text, for clients that cannot render the interactive view."""
     video = data["video"]
     facts = ", ".join(x for x in (video["channel"], video["duration"], video["published"]) if x)
@@ -470,10 +433,10 @@ def _text_menu(data: SubtitleMenuOut) -> str:
         "Formats (fmt): " + ", ".join(f"{f['label']} ({f['id']})" for f in data["formats"]) + "; default txt.",
         "Text layout for TXT (layout): " + ", ".join(f"{x['label']} ({x['id']})" for x in data["layouts"])
         + "; default paragraphs.",
-        "Actions: download link (get_download_link), preview the text (get_subtitles), summarize, translate, "
-        "key points.",
+        "Actions: download the subtitle file (get_download_link), preview the text (get_subtitles), summarize, "
+        "translate, key points.",
         "",
-        "Ask the user what they want.",
+        TWO_STEP_GUIDANCE[0].upper() + TWO_STEP_GUIDANCE[1:],
     ]
     return "\n".join(lines)
 
@@ -488,24 +451,34 @@ def _apps_support(ctx: Context) -> bool | None:
         return None
 
 
-def _menu_data(info: youtube.VideoInfo, base: str) -> SubtitleMenuOut:
+def _video_info_data(info: youtube.VideoInfo, base: str) -> VideoInfoOut:
     tracks = youtube.downloadable_tracks(info)
     rec = youtube.recommended_track(info)
-    return SubtitleMenuOut(
+    duration = format_duration(info.duration) or None
+    return VideoInfoOut(
+        video_id=info.video_id,
+        title=info.title,
+        channel=info.channel,
+        duration_seconds=info.duration,
+        duration=duration,
+        published=info.upload_date,
+        url=info.webpage_url,
+        original_language=info.original_language,
+        tracks=[TrackOut(**t.public(), kind="auto" if t.auto else "original") for t in tracks],
+        recommended=RecommendedOut(lang=rec.lang, auto=rec.auto) if rec else None,
+        options=OPTIONS,
+        menu_hint=MENU_HINT,
         video=MenuVideoOut(
             video_id=info.video_id,
             title=info.title,
             channel=info.channel,
-            duration=format_duration(info.duration) or None,
+            duration=duration,
             duration_seconds=info.duration,
             published=info.upload_date,
             url=info.webpage_url,
             thumbnail=info.thumbnail or f"https://i.ytimg.com/vi/{info.video_id}/hqdefault.jpg",
             original_language=info.original_language,
         ),
-        tracks=[MenuTrackOut(lang=t.lang, name=t.name, auto=t.auto, kind="auto" if t.auto else "original")
-                for t in tracks],
-        recommended=RecommendedOut(lang=rec.lang, auto=rec.auto) if rec else None,
         formats=[OptionOut(**f) for f in MENU_FORMATS],
         layouts=[OptionOut(**x) for x in MENU_LAYOUTS],
         defaults=dict(MENU_DEFAULTS),
@@ -518,24 +491,29 @@ def _menu_data(info: youtube.VideoInfo, base: str) -> SubtitleMenuOut:
 
 @apps.tool(
     resource_uri=MENU_URI,
-    name="subtitle_menu",
-    title="Subtitle menu",
+    name="get_video_info",
+    title="YouTube video info and subtitle menu",
     description=(
-        "Show an interactive menu for a YouTube video: subtitle tracks, format, text layout, and actions "
-        "(download, preview, summarize, translate). Call this when the user shares a YouTube link. Returns a "
-        "short status text; the user picks in the menu."
+        "Look up a YouTube video link: title, channel, duration, and the downloadable subtitle tracks (uploader "
+        "subtitles and original-language auto captions), and show the interactive subtitle menu (download the "
+        "subtitle file, preview, summarize, translate, key points). Call this first whenever the user shares a "
+        "YouTube URL or video id. Returns tracks with lang/auto to pass to get_subtitles or get_download_link, "
+        "and a recommended track."
     ),
 )
-async def subtitle_menu(url: str, ctx: Context) -> Annotated[CallToolResult, SubtitleMenuOut]:
-    """Menu data for the view (structuredContent) plus a short text for the model (content).
+async def get_video_info(url: str, ctx: Context) -> Annotated[CallToolResult, VideoInfoOut]:
+    """Video facts and tracks for the model plus the menu data for the view, in one structuredContent.
 
-    The model reads a "wait for the user" status when the client declared MCP Apps support, and the
-    whole menu as text when it declared no support. A request that carries no client capabilities
-    (for example a 2026-07-28 request without them, or a direct call) gets the text menu with
-    UNDECLARED_APPS_NOTE, since the host may still render the view.
+    `url` is a YouTube URL (watch, youtu.be, shorts, live, embed) or an 11-character video id. `tracks`
+    lists manual uploader tracks first, then original-language auto captions such as "en-orig";
+    machine-translated auto captions are left out because YouTube rate-limits them.
+    The text content is a "wait for the user" status when the client declared MCP Apps support, and the
+    whole menu as text (ending with the two-step questions) when it declared no support. A request that
+    carries no client capabilities (for example a 2026-07-28 request without them, or a direct call) gets
+    the text menu with UNDECLARED_APPS_NOTE, since the host may still render the view.
     """
     info = await _load(url)
-    data = _menu_data(info, _base_url(ctx))
+    data = _video_info_data(info, _base_url(ctx))
     apps_support = _apps_support(ctx)
     if apps_support:
         count = len(data["tracks"])
@@ -625,7 +603,6 @@ def recent_videos() -> str:
     return json.dumps({"videos": videos}, ensure_ascii=False, indent=2)
 
 
-_register(get_video_info, structured=True)
 _register(get_subtitles, structured=False)  # content blocks; a structured copy would duplicate the payload again
 _register(get_download_link, structured=True)
 for _fmt in MIME_TYPES:

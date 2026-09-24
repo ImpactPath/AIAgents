@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hmac
 import logging
+import json
 import os
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -23,6 +24,8 @@ from app.convert import FORMATS, LAYOUTS, convert
 from app.youtube import safe_title  # noqa: F401  (re-exported for tests)
 
 log = logging.getLogger(__name__)
+if not logging.getLogger().handlers:  # uvicorn only configures its own loggers
+    logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(message)s")
 
 STATIC_DIR = Path(__file__).resolve().parent.parent / "static"
 MEDIA_TYPES = {
@@ -199,7 +202,49 @@ class McpApiKeyGuard:
             response = JSONResponse({"detail": "Missing or invalid MCP API key."}, status_code=401)
             await response(scope, receive, send)
             return
+        if scope["type"] == "http" and scope.get("method") == "POST":
+            receive = _log_mcp_request(receive)
         await self.app(scope, receive, send)
+
+
+def _log_mcp_request(receive: Receive) -> Receive:
+    """Log which MCP client connects (initialize) and which tools it calls; the body is passed through."""
+    chunks: list[bytes] = []
+
+    async def wrapped() -> dict:
+        message = await receive()
+        if message.get("type") == "http.request":
+            chunks.append(message.get("body", b""))
+            if not message.get("more_body", False):
+                _describe_mcp_body(b"".join(chunks))
+        return message
+
+    return wrapped
+
+
+def _describe_mcp_body(body: bytes) -> None:
+    if not body or len(body) > 1_000_000:
+        return
+    try:
+        msg = json.loads(body)
+    except ValueError:
+        return
+    for item in msg if isinstance(msg, list) else [msg]:
+        if not isinstance(item, dict):
+            continue
+        method, params = item.get("method"), item.get("params") or {}
+        if method == "initialize":
+            info = params.get("clientInfo") or {}
+            caps = params.get("capabilities") or {}
+            ext = caps.get("extensions") or {}
+            apps = ext.get("io.modelcontextprotocol/ui")
+            log.info(
+                "MCP client connected: %s %s, protocol %s, extensions %s, apps=%s",
+                info.get("name"), info.get("version"), params.get("protocolVersion"),
+                sorted(ext) if isinstance(ext, dict) else ext, apps,
+            )
+        elif method == "tools/call":
+            log.info("MCP tools/call %s", params.get("name"))
 
 
 async def _mcp_endpoint(scope: Scope, receive: Receive, send: Send) -> None:
