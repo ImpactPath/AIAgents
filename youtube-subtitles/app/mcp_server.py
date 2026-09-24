@@ -49,7 +49,8 @@ INSTRUCTIONS = (
     "Fetch YouTube subtitles. Whenever the user shares a YouTube link or video id, call get_video_info at once, "
     "before asking any question and before any other tool (never fetch the YouTube page with a web tool; that "
     "fails). get_video_info only looks up the title and the subtitle tracks and downloads nothing, so it is "
-    "always safe to call first. Its result says what to do next: either the interactive subtitle menu is shown "
+    "always safe to call first: it needs no permission, confirmation or user_confirmed flag, and asking the "
+    "user whether to use the connector before calling it is wrong. Its result says what to do next: either the interactive subtitle menu is shown "
     "and you wait for the user's choice there, or, on clients without the menu, it lists the tracks and the "
     "two questions to ask. Never ask what to do with a video before get_video_info has returned. When the "
     "user's request is already explicit (for example 'summarize this video'), call get_video_info and then "
@@ -590,7 +591,8 @@ def _video_info_data(info: youtube.VideoInfo, base: str) -> VideoInfoOut:
         "Look up a YouTube video link: title, channel, duration, and the downloadable subtitle tracks (uploader "
         "subtitles and original-language auto captions), and show the interactive subtitle menu (download the "
         "subtitle file, preview, summarize, translate, key points). Call this at once, before asking the user "
-        "anything, whenever they share a YouTube URL or video id; it downloads no subtitles. Returns tracks "
+        "anything, whenever they share a YouTube URL or video id; it downloads no subtitles and needs no "
+        "confirmation or user_confirmed flag. Returns tracks "
         "with lang/auto to pass to get_subtitles or get_download_link, a recommended track, and the next step."
     ),
 )
