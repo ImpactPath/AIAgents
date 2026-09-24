@@ -164,6 +164,9 @@ language; the model translates the text itself.
 
 ## Free deployment
 
+What was tried on Hugging Face Spaces and Render, and why the app now runs on a Mac, is written up in
+Korean in `docs/DEPLOYMENT_NOTES.ko.md`.
+
 ### Your own Mac plus Tailscale Funnel (recommended when you have an always-on Mac)
 
 Running on a home network avoids YouTube's data-center IP blocks entirely, and Tailscale Funnel gives the
