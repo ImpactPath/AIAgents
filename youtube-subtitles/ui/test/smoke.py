@@ -352,13 +352,13 @@ def dark_korean(browser, shots: Path) -> None:
           and "this chat's files" in text, "Add to chat asks the model to save the transcript as a chat file")
     f.locator("#notice").get_by_text("자막을 입력창에 넣었습니다. 전송을 누르면 채팅에 추가됩니다.").wait_for(state="visible")
 
-    # After Add to chat, prompts for the same track point at the transcript already in the conversation.
+    # Prompts always point at a transcript already in the conversation first and fetch only if it is missing.
     f.locator("#btn-report").click()
     run.wait_for_method("ui/message", 4)
     text = [m for m in run.log() if m.get("method") == "ui/message"][-1]["params"]["content"][0]["text"]
-    check(text.startswith(f"The subtitles of '{TITLE}' (en) were added to this conversation earlier")
-          and "do not call get_subtitles again" in text and "Only if they are not in this conversation" in text
-          and ".md" in text, "prompts after Add to chat reuse the transcript in the chat")
+    check(text.startswith(f"If the subtitles of '{TITLE}' (en) are already in this conversation")
+          and "do not call get_subtitles again" in text and "Otherwise fetch them with get_subtitles" in text
+          and ".md" in text, "prompts reuse a transcript already in the chat and fetch otherwise")
     passed.append("Add to chat shows the Korean confirmation")
     check(not run.errors, "no console errors (dark, ko-KR)")
     page.close()
