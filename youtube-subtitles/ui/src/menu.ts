@@ -521,13 +521,17 @@ function promptText(kind: string): string {
     `call get_subtitles again. Otherwise fetch them with get_subtitles (url=${v.url}, lang=${t.lang}, ` +
     `auto=${t.auto}, fmt=txt, layout=paragraphs, user_confirmed=true). With the subtitles`;
   if (kind === "report") {
-    const facts =
-      `Title: ${v.title}; Channel: ${v.channel || "unknown"}; Duration: ${v.duration || "unknown"}; ` +
-      `Published: ${v.published || "unknown"}; URL: ${v.url}`;
+    const facts = [
+      `- **Title**: ${v.title}`,
+      `- **Channel**: ${v.channel || "unknown"}`,
+      `- **Duration**: ${v.duration || "unknown"}`,
+      `- **Published**: ${v.published || "unknown"}`,
+      `- **URL**: ${v.url}`,
+    ].join("\n");
     return (
       `${fetch}. Then write a detailed, structured summary report in ${answerLanguage()}. Start the report ` +
-      `with a "Video" section that lists these facts exactly as given, one per line, before any other section: ` +
-      `${facts}. Then these sections: ` +
+      `with a "Video" section that contains exactly these five Markdown bullet lines, verbatim, each on its own ` +
+      `line (a bold label, a colon, the value), before any other section:\n${facts}\nThen these sections: ` +
       "Overview (2 to 3 sentences); Key arguments, with the speaker's reasoning for each; Notable quotes, " +
       "paraphrased rather than copied from the transcript; Timeline of topics, if timestamps are available; " +
       "and Takeaways. The report must be your own writing, not the transcript or a lightly edited copy of it. " +

@@ -330,9 +330,10 @@ def dark_korean(browser, shots: Path) -> None:
           "Summary report sends ui/message with get_subtitles and .md")
     check("user_confirmed=true" in text and "language the user has been writing in" in text and "not the transcript" in text,
           "Summary report prompt: user_confirmed, user's language, own writing")
-    check(f"Title: {TITLE}; Channel: {CHANNEL}; Duration: 28:05; Published: 2024-05-17; URL: https://www.youtube.com/watch?v=dQw4w9WgXcQ" in text
-          and text.index("\"Video\" section") < text.index("Overview"),
-          "Summary report prompt puts the video facts section before Overview")
+    facts = (f"- **Title**: {TITLE}\n- **Channel**: {CHANNEL}\n- **Duration**: 28:05\n- **Published**: 2024-05-17\n"
+             "- **URL**: https://www.youtube.com/watch?v=dQw4w9WgXcQ")
+    check(facts in text and text.index("\"Video\" section") < text.index("Overview"),
+          "Summary report prompt puts five bullet video facts before Overview")
 
     check(f.locator("#btn-addchat").inner_text().strip() == "채팅에 넣기", "Korean Add to chat label")
     calls_before = len([m for m in run.log() if m.get("method") == "tools/call"])
