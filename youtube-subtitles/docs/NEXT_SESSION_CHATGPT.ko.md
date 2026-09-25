@@ -23,9 +23,9 @@ Fable이 기획과 감독을 맡고, 단순 구현은 Opus 서브에이전트에
 
 ## 문제
 
-ChatGPT 웹(Plus, Apps & Connectors의 Developer mode, 화면에서는 plugin이라고 부름)에 커넥터를 설치했는데, 대화에서 "YouTube Subtitles MCP is not exposed as a callable connector in this chat session"이라며 도구를 호출하지 못합니다. 그 전에 ChatGPT는 같은 URL에 대해 401을 받았다고 했습니다. Codex 앱의 MCP 설정 화면(Streamable HTTP, Headers 입력 가능)으로도 등록을 시도했습니다.
+ChatGPT(Plus)에 커넥터를 설치했는데, 대화에서 "YouTube Subtitles MCP is not exposed as a callable connector in this chat session"이라며 도구를 호출하지 못합니다. 등록 화면은 Name, Type(STDIO 또는 Streamable HTTP), URL, Bearer token env var, Headers, Headers from environment variables 항목이 있는 폼이었고, 사용자는 Headers에 `X-API-Key`와 키 값을 넣었습니다. 이 폼은 Codex의 MCP 설정 항목(`bearer_token_env_var`, `http_headers`, `env_http_headers`)과 같으므로 ChatGPT 데스크톱 앱의 플러그인 설정이거나 Codex 앱일 수 있습니다. 어느 쪽인지 사용자에게 확인하세요. 그보다 앞서 ChatGPT가 같은 URL에 401을 받았다고 답한 적이 있는데, 그것은 커넥터가 아니라 모델이 웹 도구로 URL을 직접 열어 본 결과일 가능성이 있습니다.
 
-가장 유력한 원인 후보는 두 가지이며 아직 확인되지 않았습니다. 첫째, ChatGPT 커넥터의 URL에 `?key=API키`가 빠져 있어 초기화가 401로 실패했고 그래서 도구 목록이 비어 있다. 둘째, ChatGPT는 Developer mode 커넥터를 대화마다 켜 줘야 하는데(입력창의 + 메뉴에서 커넥터 선택) 그 단계를 거치지 않았다.
+원인 후보는 다음과 같고 아직 어느 것도 확인되지 않았습니다. 첫째, 플러그인은 설치됐지만 그 대화에서 켜지지 않았다(ChatGPT의 답변도 "플러그인을 선택한 상태로 대화를 새로 열라"고 안내). 둘째, 클라이언트가 서버에 붙긴 했으나 초기화나 도구 목록 조회에서 실패했다(헤더가 실제로 전송되지 않아 401, 또는 프로토콜 버전이나 세션 처리 차이). 셋째, 클라이언트가 서버에 아예 도달하지 않았다. 이 셋은 Mac 로그로 한 번에 갈립니다. 로그에 Claude가 아닌 이름의 `MCP client connected` 줄이 있으면 첫째, 401 접근 기록만 있으면 둘째, 아무 기록이 없으면 셋째입니다.
 
 ## 목표
 
