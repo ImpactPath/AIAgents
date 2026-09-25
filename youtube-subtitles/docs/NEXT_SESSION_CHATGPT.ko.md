@@ -21,7 +21,10 @@ Fable이 기획과 감독을 맡고, 단순 구현은 Opus 서브에이전트에
 - 로그는 `~/Library/Logs/youtube-subtitles.log`에 시각과 함께 남고, `MCP client connected: 이름 버전, protocol, extensions, apps=` 줄로 어떤 클라이언트가 붙었는지, `MCP tools/call 이름` 줄로 어떤 도구가 불렸는지 알 수 있습니다.
 - 테스트: `python -m pytest -q tests`(209개), `cd ui && npm run build && python test/smoke.py`(56개 검사). 메뉴 화면을 고치면 `app/ui/menu.html`을 다시 빌드해 커밋해야 합니다.
 
-## 문제
+## 문제 (2026-09-25 갱신: 해결됨)
+
+아래 문제는 해결되었습니다. 원인은 커넥터를 ChatGPT의 Plugins가 아니라 Codex 앱의 MCP 설정에 등록한 것이었고, ChatGPT 설정의 Plugins에서 Create MCP App으로 다시 등록(키는 URL의 `?key=`, 인증 없음)하고 대화에서 플러그인을 켜자 텍스트 경로와 파일 생성까지 동작했습니다. 따라서 목표 1과 2는 끝났고, 새 세션에서는 목표 3(ChatGPT에서 메뉴 카드 표시)과 4(문서)만 다루면 됩니다. 원래의 문제 기술은 기록으로 남깁니다.
+
 
 ChatGPT(Plus)에 커넥터를 설치했는데, 대화에서 "YouTube Subtitles MCP is not exposed as a callable connector in this chat session"이라며 도구를 호출하지 못합니다. 등록 화면은 Name, Type(STDIO 또는 Streamable HTTP), URL, Bearer token env var, Headers, Headers from environment variables 항목이 있는 폼이었고, 사용자는 Headers에 `X-API-Key`와 키 값을 넣었습니다. 이 폼은 Codex의 MCP 설정 항목(`bearer_token_env_var`, `http_headers`, `env_http_headers`)과 같으므로 ChatGPT 데스크톱 앱의 플러그인 설정이거나 Codex 앱일 수 있습니다. 어느 쪽인지 사용자에게 확인하세요. 그보다 앞서 ChatGPT가 같은 URL에 401을 받았다고 답한 적이 있는데, 그것은 커넥터가 아니라 모델이 웹 도구로 URL을 직접 열어 본 결과일 가능성이 있습니다.
 

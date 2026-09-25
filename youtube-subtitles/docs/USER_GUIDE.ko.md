@@ -71,7 +71,9 @@ TXT의 Text layout은 줄바꿈을 어떻게 정돈할지 정합니다.
 4. 헤더에 `X-API-Key`를 추가하고 값에 서버의 API 키를 넣습니다. 헤더를 넣을 수 없는 클라이언트라면 URL 뒤에 `?key=API키`를 붙이는 방식도 됩니다.
 5. 저장하면 Connected 표시가 뜹니다.
 
-claude.ai 웹과 모바일 앱도 같은 Connectors 설정에서 등록합니다. Claude Code는 `claude mcp add --transport http youtube-subtitles "https://dukwoos-mac-mini.tailb8572b.ts.net/mcp?key=API키"`로 등록합니다. ChatGPT는 Settings의 Connectors에서 Developer mode로 만들거나, Custom GPT Action에 `https://dukwoos-mac-mini.tailb8572b.ts.net/openapi.json`을 가져오면 됩니다.
+claude.ai 웹과 모바일 앱도 같은 Connectors 설정에서 등록합니다.
+
+ChatGPT(Plus 이상)는 설정의 Plugins에서 Add 메뉴의 **Create MCP App**을 고릅니다. Name을 넣고, Connection은 Server URL, URL은 `https://dukwoos-mac-mini.tailb8572b.ts.net/mcp?key=API키`(이 폼에는 헤더 칸이 없으므로 키를 URL에 넣음), Authentication은 No authentication으로 저장합니다. 대화에서는 입력창의 + 메뉴에서 이 플러그인을 켠 뒤 링크를 보냅니다. Codex 앱의 MCP 설정은 별개이므로 그쪽에 등록해도 ChatGPT에는 나타나지 않습니다. ChatGPT에서는 메뉴 카드 대신 텍스트 메뉴와 두 단계 질문으로 진행되며 파일은 다운로드 링크로 받습니다. Claude Code는 `claude mcp add --transport http youtube-subtitles "https://dukwoos-mac-mini.tailb8572b.ts.net/mcp?key=API키"`로 등록합니다. ChatGPT는 Settings의 Connectors에서 Developer mode로 만들거나, Custom GPT Action에 `https://dukwoos-mac-mini.tailb8572b.ts.net/openapi.json`을 가져오면 됩니다.
 
 ### 3.2 첫 메시지 쓰는 법
 
@@ -91,7 +93,7 @@ claude.ai 웹과 모바일 앱도 같은 Connectors 설정에서 등록합니다
 
 | 버튼 | 동작 | 자막 재조회 |
 | --- | --- | --- |
-| Add to chat(채팅에 넣기) | 자막 전문을 안내문과 함께 입력창에 넣습니다. 전송하면 자막이 대화에 들어가고, 이후 질문은 도구 호출 없이 바로 답합니다. 안내문에는 자막을 `제목_subtitle_언어.txt`(자동 생성이면 `_auto`가 붙음) 파일로 저장해 대화의 파일 목록에 올리라는 지시도 들어 있어, 파일 생성이 가능한 환경에서는 파일도 함께 만들어집니다. | 처음 한 번만 |
+| Add to chat(채팅에 넣기) | 자막 전문을 안내문과 함께 입력창에 넣습니다. 전송하면 자막이 대화에 들어가고, 이후 질문은 도구 호출 없이 바로 답합니다. 안내문에는 자막을 `제목_subtitle_언어.txt`(자동 생성이면 `_auto`가 붙음) 파일로 즉시 저장해 대화의 파일 목록에 올리라는 지시가 조건 없이 들어 있어, 파일 생성을 지원하는 환경에서는 파일도 함께 만들어집니다. | 처음 한 번만 |
 | Download(다운로드) | 고른 트랙과 형식으로 파일을 만들어 컴퓨터에 저장합니다. 저장이 안 되면 카드에 나타나는 링크를 누릅니다. 채팅에는 파일 카드가 남지 않습니다. | 서버 캐시 사용 |
 | Preview(미리 보기) | 카드 안에 전체 텍스트를 보여 주고 복사 버튼을 제공합니다. | 서버 캐시 사용 |
 | Summarize(요약) | 요약 요청문을 입력창에 채웁니다. 2~3문장 개요, 영상 순서를 따르는 5~8개 논지(근거 포함), 마지막 한 줄 핵심이라는 구조를 지정하고, 자막 문장을 베끼지 말고 이름과 숫자는 정확히 유지하라고 지시합니다. | 서버 캐시 사용 |

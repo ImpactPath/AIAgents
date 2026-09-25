@@ -589,8 +589,8 @@ async function onAddToChat(): Promise<void> {
     const message =
       `Here are the subtitles of '${data.video.title}' (${t.lang}) for reference in this conversation. ` +
       `Keep them in mind for my next questions; do not call get_subtitles again for this track. ` +
-      `If you can create files in this conversation, also save the text below, complete and unchanged, ` +
-      `as a file named '${fileName}' so it appears in this chat's files. ` +
+      `Also create a file in this conversation: save the text below, complete and unchanged, ` +
+      `as a file named '${fileName}' so it appears in this chat's files. Do this now, not later. ` +
       `Reply with a one-line confirmation in ${answerLanguage()}.\n\n${text}`;
     const res = await app.sendMessage({ role: "user", content: [{ type: "text", text: message }] });
     if (res?.isError) throw new Error("The host did not accept the message.");
