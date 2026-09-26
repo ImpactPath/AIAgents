@@ -528,15 +528,32 @@ function promptText(kind: string): string {
       `- **Published**: ${v.published || "unknown"}`,
       `- **URL**: ${v.url}`,
     ].join("\n");
+    // The structure below mirrors a report the user approved: analytical third-person prose, numbered
+    // arguments with the speaker's reasoning, paraphrased quotes, a timeline, and thesis-first takeaways.
     return (
-      `${fetch}. Then write a detailed, structured summary report in ${answerLanguage()}. Start the report ` +
-      `with a "Video" section that contains exactly these five Markdown bullet lines, verbatim, each on its own ` +
-      `line (a bold label, a colon, the value), before any other section:\n${facts}\nThen these sections: ` +
-      "Overview (2 to 3 sentences); Key arguments, with the speaker's reasoning for each; Notable quotes, " +
-      "paraphrased rather than copied from the transcript; Timeline of topics, if timestamps are available; " +
-      "and Takeaways. The report must be your own writing, not the transcript or a lightly edited copy of it. " +
-      "Deliver it as a downloadable Markdown (.md) file named after the video title, " +
-      "and also give a three-line summary in the chat."
+      `${fetch}. Then write a detailed, structured summary report in ${answerLanguage()}, as a Markdown ` +
+      `document with exactly this structure and these English headings.\n` +
+      `# <the video title>\n` +
+      `## Video\nExactly these five bullet lines, verbatim, each on its own line:\n${facts}\n` +
+      `## Overview\nTwo paragraphs of 3 to 4 sentences each: what the video is about and the speaker's ` +
+      `central position, then the scope of the argument and where the speaker lands.\n` +
+      `## Key arguments\n8 to 10 numbered "### N. <claim>" subsections in the order of the video (fewer only ` +
+      `for a short video). Each heading is one declarative sentence stating the claim. Each subsection has 1 ` +
+      `or 2 short paragraphs giving the speaker's reasoning and evidence, and may use a 3 to 5 item bullet ` +
+      `list when the reasoning is a chain of steps.\n` +
+      `## Notable quotes (paraphrased)\n6 to 8 Markdown blockquotes, one sentence each, paraphrased in your ` +
+      `own words rather than copied from the transcript.\n` +
+      `## Timeline of topics\nA bullet list of time ranges in bold followed by the topic. If the subtitles ` +
+      `carry no timestamps, open with one sentence saying the ranges are approximate and derived from the ` +
+      `total duration and the flow of the talk, then still give 6 to 8 ranges.\n` +
+      `## Takeaways\n5 to 7 numbered items. Each starts with a bold one-sentence thesis followed by 1 or 2 ` +
+      `explanatory sentences.\n` +
+      `Length: about 1,500 to 2,500 words for a 20 minute video, scaled to the video's length. Tone: ` +
+      `analytical, third person ("the speaker argues"), no filler and no praise. Keep names, numbers and ` +
+      `product names exact, add nothing that is not in the subtitles, and write ranges with "to" or a ` +
+      `hyphen, never an em dash. The report must be your own writing, not the transcript or a lightly ` +
+      `edited copy of it. Deliver it as a downloadable Markdown (.md) file named after the video title, ` +
+      `and also give a three-line summary in the chat.`
     );
   }
   const task: Record<string, string> = {
