@@ -2,7 +2,7 @@
 
 # MUST WATCH: Obama Gives Deep Take On AI Threat, Recursive Self-Improvement, & His Suggested Approach
 
-## Video
+## Video info
 
 - **Title**: MUST WATCH: Obama Gives Deep Take On AI Threat, Recursive Self-Improvement, & His Suggested Approach
 - **Channel**: Forbes Breaking News

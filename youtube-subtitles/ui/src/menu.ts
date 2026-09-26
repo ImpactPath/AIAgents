@@ -534,7 +534,7 @@ function promptText(kind: string): string {
       `${fetch}. Then write a detailed, structured summary report in ${answerLanguage()}, as a Markdown ` +
       `document with exactly this structure and these English headings.\n` +
       `# <the video title>\n` +
-      `## Video\nExactly these five bullet lines, verbatim, each on its own line:\n${facts}\n` +
+      `## Video info\nExactly these five bullet lines, verbatim, each on its own line:\n${facts}\n` +
       `## Overview\nTwo paragraphs of 3 to 4 sentences each: what the video is about and the speaker's ` +
       `central position, then the scope of the argument and where the speaker lands.\n` +
       `## Key arguments\n8 to 10 numbered "### N. <claim>" subsections in the order of the video (fewer only ` +
