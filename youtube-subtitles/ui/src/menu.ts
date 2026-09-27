@@ -471,9 +471,11 @@ async function onPreview(): Promise<void> {
   if (key !== previewKey || !previewText) {
     setBusy(button, true, L.loading);
     try {
+      // Same limit as Add to chat: the preview and its Copy button must carry the whole transcript,
+      // and a 20000 limit cut talks longer than about 20 minutes.
       const result = await app.callServerTool({
         name: "get_subtitles",
-        arguments: subtitleArgs({ attach: false, max_chars: 20000 }),
+        arguments: subtitleArgs({ attach: false, max_chars: 200000 }),
       });
       if (result.isError) throw new Error(textOf(result) || L.error);
       previewText = textOf(result);

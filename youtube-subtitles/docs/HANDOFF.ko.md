@@ -41,7 +41,7 @@ Fable이 기획과 감독을 맡고, 단순 구현은 Opus 서브에이전트에
 
 ## 요약 보고서의 현재 구조 (자주 손보는 부분)
 
-Video info(다섯 줄 목록), Overview(두 문단), Key takeaways(5~7), Key arguments(8~10, 번호 소제목), Notable quotes (paraphrased)(6~8), Timeline of topics, 그리고 정책, 기후, 개발, 기술 거버넌스, 경제 주제에서만 Key implications(정확히 6개, 한국과 국제기구, GGGI 명시)와 Key discussion points(6~7개 열린 질문). 20분 영상 기준 1,500~2,500단어, 선택 절 포함 시 3,000단어까지. 답변 끝에 자막 대조 점검을 제안하는 예/아니오 질문을 붙이고, 동의하면 수정본 v2를 냅니다. 이 구조는 `ui/src/menu.ts`의 `promptText` 함수 안 report 분기에 있습니다.
+Video info(다섯 줄 목록), Overview(두 문단), Key takeaways(5~7), Key arguments(8~10, 번호 소제목), Notable quotes (paraphrased)(6~8), Timeline of topics, 그리고 공공 정책, 기후, 에너지, 개발, 기술 거버넌스, 경제, 국제 협력 주제에서만 Key implications(정확히 6개, 한국과 국제기구가 대략 절반씩, 그중 두 개 이상에서 GGGI 명시)와 Key discussion points(6~7개 열린 질문). 20분 영상 기준 1,500~2,500단어, 선택 절 포함 시 3,000단어까지. 답변 끝에 자막 대조 점검을 제안하는 예/아니오 질문을 붙이고, 동의하면 수정본 v2를 냅니다. 이 구조는 `ui/src/menu.ts`의 `promptText` 함수 안 report 분기에 있습니다.
 
 ## 마무리 규칙
 
