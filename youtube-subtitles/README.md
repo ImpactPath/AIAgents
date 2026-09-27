@@ -170,6 +170,8 @@ Korean in `docs/DEPLOYMENT_NOTES.ko.md`.
 Lessons from building the MCP connector and the menu app, with a checklist for the next one, are in
 `docs/MCP_LESSONS.ko.md` (Korean).
 
+To continue this project in a fresh Claude Code session, paste `docs/HANDOFF.ko.md` as the first message.
+
 ### Your own Mac plus Tailscale Funnel (recommended when you have an always-on Mac)
 
 Running on a home network avoids YouTube's data-center IP blocks entirely, and Tailscale Funnel gives the
