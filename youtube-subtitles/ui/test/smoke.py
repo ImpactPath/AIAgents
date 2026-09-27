@@ -390,8 +390,8 @@ def light_english(browser, shots: Path) -> None:
     f.locator("#btn-preview").click()
     f.locator("#preview").wait_for(state="visible")
     call = [m for m in run.log() if m.get("method") == "tools/call"][-1]
-    check(call["params"]["arguments"]["attach"] is False and call["params"]["arguments"]["max_chars"] == 20000,
-          "Preview calls get_subtitles with attach false, max_chars 20000")
+    check(call["params"]["arguments"]["attach"] is False and call["params"]["arguments"]["max_chars"] == 200000,
+          "Preview calls get_subtitles with attach false, max_chars 200000")
     check(call["params"]["arguments"]["user_confirmed"] is True, "Preview sends user_confirmed true")
     check(f.locator("#preview-text").inner_text().startswith("Green growth"), "Preview shows the text")
     run.settle()
