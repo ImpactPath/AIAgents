@@ -172,6 +172,8 @@ Lessons from building the MCP connector and the menu app, with a checklist for t
 
 To continue this project in a fresh Claude Code session, paste `docs/HANDOFF.ko.md` as the first message.
 
+`docs/ARCHITECTURE.ko.md` (Korean, Mermaid diagrams) explains the components and the request flows.
+
 ### Your own Mac plus Tailscale Funnel (recommended when you have an always-on Mac)
 
 Running on a home network avoids YouTube's data-center IP blocks entirely, and Tailscale Funnel gives the

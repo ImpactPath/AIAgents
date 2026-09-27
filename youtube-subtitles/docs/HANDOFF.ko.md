@@ -22,6 +22,7 @@ Fable이 기획과 감독을 맡고, 단순 구현은 Opus 서브에이전트에
 4. `docs/DEPLOYMENT_NOTES.ko.md`: 클라우드 배포 시도 기록. 클라우드로 옮길 생각이 있을 때만.
 5. `docs/NEXT_SESSION_CHATGPT.ko.md`: ChatGPT에서 메뉴 카드를 띄우는 후속 과제 프롬프트. 그 작업을 할 때만.
 6. `docs/examples/summary-report-example.ko.md`: 요약 보고서 버튼이 목표로 하는 결과물의 기준 예시.
+7. `docs/ARCHITECTURE.ko.md`: 부품과 요청 흐름을 도식으로 정리한 구조 설명. 전체 그림이 필요할 때.
 
 ## 코드 지도
 
