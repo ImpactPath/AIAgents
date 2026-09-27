@@ -1008,7 +1008,7 @@
             if (star) { try { return decodeURIComponent(star[1].trim().replace(/^"|"$/g, '')); } catch (e) { /* fall through */ } }
             const plain = cd.match(/filename\s*=\s*"([^"]+)"|filename\s*=\s*([^;]+)/);
             if (plain) return (plain[1] || plain[2]).trim();
-            return `${state.info.video_id || 'subtitles'}.${tr.lang}${tr.auto ? '.auto' : ''}.${state.fmt}`;
+            return `${state.info.video_id || 'subtitles'}_subtitle_${tr.lang}${tr.auto ? '_auto' : ''}.${state.fmt}`;
         }
 
         function setDownloadLoading(on) {

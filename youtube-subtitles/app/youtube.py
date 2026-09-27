@@ -118,19 +118,22 @@ class VideoInfo:
 
 
 def safe_title(title: str, fallback: str) -> str:
-    """Make a title safe for a filename: no reserved chars, collapsed spaces, max 80 chars."""
+    """Make a title safe for a filename: no reserved chars, words joined by underscores, max 80 chars.
+
+    Underscores instead of spaces keep names usable in terminals, scripts and URLs without quoting.
+    """
     name = "".join(ch for ch in title if unicodedata.category(ch)[0] != "C")
     name = re.sub(r'[\\/:*?"<>|]+', " ", name)
     name = re.sub(r"\s+", " ", name).strip(" .")
     name = name[:80].strip(" .")
-    return name or fallback
+    return name.replace(" ", "_") or fallback
 
 
 def download_filename(info: VideoInfo, lang: str, auto: bool, fmt: str) -> tuple[str, str]:
-    """(filename, ASCII fallback) used by /api/download, e.g. "Title.en.auto.txt"."""
+    """(filename, ASCII fallback) used by /api/download, e.g. "Title_subtitle_en_auto.txt"."""
     title = safe_title(info.title, info.video_id)
     lang_part = re.sub(r"[^A-Za-z0-9_-]", "", lang) or "sub"
-    suffix = f".{lang_part}{'.auto' if auto else ''}.{fmt}"
+    suffix = f"_subtitle_{lang_part}{'_auto' if auto else ''}.{fmt}"
     ascii_title = title if title.isascii() else info.video_id
     return title + suffix, ascii_title + suffix
 

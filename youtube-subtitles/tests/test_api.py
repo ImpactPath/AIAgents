@@ -308,8 +308,8 @@ def test_download_formats(client, fmt, ctype, start):
     assert r.text.startswith(start)
     cd = r.headers["content-disposition"]
     assert cd.startswith("attachment; ")
-    assert f'filename="Never Gonna Give You Up.en.{fmt}"' in cd
-    assert f"filename*=UTF-8''Never%20Gonna%20Give%20You%20Up.en.{fmt}" in cd
+    assert f'filename="Never_Gonna_Give_You_Up_subtitle_en.{fmt}"' in cd
+    assert f"filename*=UTF-8''Never_Gonna_Give_You_Up_subtitle_en.{fmt}" in cd
 
 
 LAYOUT_VTT = (
@@ -334,7 +334,7 @@ def test_download_txt_layouts(client, monkeypatch, layout, body):
         params["layout"] = layout
     r = client.get("/api/download", params=params)
     assert r.status_code == 200 and r.text == body
-    assert r.headers["content-disposition"].endswith(".en.txt")
+    assert r.headers["content-disposition"].endswith("_subtitle_en.txt")
 
 
 @pytest.mark.parametrize("fmt", ["srt", "vtt"])
@@ -391,7 +391,7 @@ def test_download_header_omits_missing_fields(client, monkeypatch):
 def test_download_defaults_and_auto_suffix(client):
     r = client.get("/api/download", params={"url": VID, "lang": "en", "auto": "1"})
     assert r.status_code == 200
-    assert 'filename="Never Gonna Give You Up.en.auto.srt"' in r.headers["content-disposition"]
+    assert 'filename="Never_Gonna_Give_You_Up_subtitle_en_auto.srt"' in r.headers["content-disposition"]
     assert client.calls["sub"][0].auto is True
 
 
@@ -401,13 +401,13 @@ def test_download_korean_title(client, monkeypatch):
     r = client.get("/api/download", params={"url": URL, "lang": "ko", "fmt": "txt"})
     assert r.status_code == 200
     cd = r.headers["content-disposition"]
-    assert f'filename="{VID}.ko.txt"' in cd
-    assert "filename*=UTF-8''" + quote("아이유 좋은 날 Live.ko.txt", safe="") in cd
+    assert f'filename="{VID}_subtitle_ko.txt"' in cd
+    assert "filename*=UTF-8''" + quote("아이유_좋은_날_Live_subtitle_ko.txt", safe="") in cd
     cd.encode("latin-1")  # header must be encodable
 
 
 def test_safe_title():
-    assert safe_title('  a/b\\c:d*e?f"g<h>i|j  ', "x") == "a b c d e f g h i j"
+    assert safe_title('  a/b\\c:d*e?f"g<h>i|j  ', "x") == "a_b_c_d_e_f_g_h_i_j"
     assert safe_title("x" * 200, "id") == "x" * 80
     assert safe_title("???", "fallback") == "fallback"
     assert safe_title("tab\tand\nnewline", "id") == "tabandnewline"

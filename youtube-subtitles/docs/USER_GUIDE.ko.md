@@ -59,7 +59,7 @@ TXT의 Text layout은 줄바꿈을 어떻게 정돈할지 정합니다.
 
 모든 파일은 맨 앞에 메타데이터 섹션이 있고 그다음 자막 본문이 이어집니다. 메타데이터에는 Title, Channel, Duration, Published, URL, Subtitles(트랙 이름과 언어, original 또는 auto 표시)가 들어갑니다. TXT는 평문으로, VTT는 NOTE 블록으로, SRT는 0초 위치의 첫 번째 큐로 넣어 어떤 플레이어에서도 파일이 열립니다.
 
-파일 이름은 `영상제목.언어코드.txt` 형식이고 자동 생성 자막이면 `.auto`가 붙습니다(예: `제목.en-orig.auto.txt`). 제목에 파일 이름으로 쓸 수 없는 문자가 있으면 정리되고, 영어가 아닌 제목은 일부 환경에서 영상 ID로 대체될 수 있습니다.
+파일 이름에는 공백이 없습니다. 제목의 단어를 밑줄로 잇고 `제목_subtitle_언어코드.txt` 형식을 쓰며, 자동 생성 자막이면 `_auto`가 붙습니다(예: `Obama_Gives_Deep_Take_On_AI_subtitle_en-orig_auto.txt`). 요약 보고서는 `제목_summary.md`, 점검 뒤 수정본은 `제목_summary_v2.md`입니다. 제목에 파일 이름으로 쓸 수 없는 문자가 있으면 정리되고, 한글 제목은 그대로 유지됩니다. 다만 Claude 메뉴 카드의 Download는 Claude Desktop이 한글을 깨뜨리기 때문에 영문과 숫자만 남기며, 남는 글자가 없으면 영상 ID를 씁니다.
 
 ## 3. Claude Desktop에서 MCP로 쓰기
 

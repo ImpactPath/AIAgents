@@ -274,7 +274,7 @@ def test_get_download_link_default_track_from_public_base_url(client, info_holde
         f"?url={VID}&lang=en&auto=false&fmt=txt&layout=paragraphs&header=1"
     )
     assert data["web_app_url"] == "https://dukwoos-mac-mini.tailb8572b.ts.net/"
-    assert data["filename"] == "Never Gonna Give You Up.en.txt"
+    assert data["filename"] == "Never_Gonna_Give_You_Up_subtitle_en.txt"
     assert data["track"] == {"lang": "en", "name": "English", "auto": False}
     assert "no login" in data["note"]
     assert info_holder["fetched"] == []  # the link tool never downloads the subtitles
@@ -290,13 +290,13 @@ def test_get_download_link_explicit_choice_encoding_and_filename(client, info_ho
     parts, q = link_query(data["download_url"])
     assert (parts.scheme, parts.netloc, parts.path) == ("https", "host.example", "/api/download")
     assert q == {"url": VID, "lang": "pt-BR", "auto": "false", "fmt": "txt", "layout": "sentences", "header": "0"}
-    assert data["filename"] == "Caf\u00e9 & Co 100% live.pt-BR.txt"
+    assert data["filename"] == "Caf\u00e9_&_Co_100%_live_subtitle_pt-BR.txt"
 
     data = pick(client, "get_download_link", url=VID, lang="en", fmt="srt", layout="cues")["structuredContent"]
     _, q = link_query(data["download_url"])
     assert q == {"url": VID, "lang": "en-orig", "auto": "true", "fmt": "srt", "layout": "paragraphs", "header": "1"}
     assert data["track"] == {"lang": "en-orig", "name": "English", "auto": True}
-    assert data["filename"] == "Caf\u00e9 & Co 100% live.en-orig.auto.srt"
+    assert data["filename"] == "Caf\u00e9_&_Co_100%_live_subtitle_en-orig_auto.srt"
 
     missing = pick(client, "get_download_link", url=VID, lang="ja")
     assert missing["isError"] is True and "No subtitle track for language 'ja'" in text_of(missing)
@@ -495,7 +495,7 @@ def test_get_subtitles_attaches_resource_and_link(client, info_holder):
     uri = f"subtitles://video/{VID}/es-orig/true/txt/paragraphs"
     assert embedded["resource"] == {"uri": uri, "mimeType": "text/plain", "text": text_block["text"]}
     assert link["uri"] == uri and link["mimeType"] == "text/plain"
-    assert link["name"] == "Never Gonna Give You Up.es-orig.auto.txt"
+    assert link["name"] == "Never_Gonna_Give_You_Up_subtitle_es-orig_auto.txt"
     assert link["size"] == len(text_block["text"].encode("utf-8"))
     # The attached URI reads back the same text.
     assert read_resource(client, uri)["result"]["contents"][0]["text"] == text_block["text"]
@@ -503,7 +503,7 @@ def test_get_subtitles_attaches_resource_and_link(client, info_holder):
     srt = pick(client, "get_subtitles", url=VID, fmt="srt", layout="sentences", include_header=False)["content"]
     assert srt[1]["resource"]["uri"] == f"subtitles://video/{VID}/en/false/srt/cues?header=0"
     assert srt[1]["resource"]["mimeType"] == srt[2]["mimeType"] == "application/x-subrip"
-    assert srt[2]["name"] == "Never Gonna Give You Up.en.srt"
+    assert srt[2]["name"] == "Never_Gonna_Give_You_Up_subtitle_en.srt"
 
     plain = pick(client, "get_subtitles", url=VID, attach=False)
     assert [b["type"] for b in plain["content"]] == ["text"]

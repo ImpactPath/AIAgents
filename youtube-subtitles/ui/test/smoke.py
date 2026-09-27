@@ -339,6 +339,9 @@ def dark_korean(browser, shots: Path) -> None:
     check("8 to 10 numbered" in text and "6 to 8 Markdown blockquotes" in text and "5 to 7 numbered items" in text
           and "exactly 6 numbered implications" in text and "GGGI" in text and "6 to 7 numbered open questions" in text
           and "1,500 to 2,500 words" in text, "Summary report prompt sets counts, GGGI, and length")
+    check("named exactly 'Green_growth_in_practice_lessons_from_ten_years_of_national_plans_summary.md'" in text
+          and "'Green_growth_in_practice_lessons_from_ten_years_of_national_plans_summary_v2.md'" in text,
+          "Summary report and its v2 use the underscore file-name rule")
     check("exactly one yes-or-no question offering a review pass" in text and "v2" in text
           and "revise those two sections" in text,
           "Summary report prompt ends the chat reply with a review-pass question that covers the optional sections")
@@ -361,7 +364,8 @@ def dark_korean(browser, shots: Path) -> None:
     check(msg["params"]["role"] == "user" and text.startswith(f"Here are the subtitles of '{TITLE}' (en)")
           and "do not call get_subtitles again" in text and text.endswith(SUB_TEXT_TAIL),
           "Add to chat sends the transcript as a user message")
-    check("as a file named 'Green_growth_in_practice_lessons_from_ten_years_of_national_plans_subtitle_en.txt'" in text
+    check("as a file named 'Green_growth_in_practice:_lessons_from_ten_years_of_national_plans_subtitle_en.txt'" not in text
+          and "as a file named 'Green_growth_in_practice_lessons_from_ten_years_of_national_plans_subtitle_en.txt'" in text
           and "this chat's files" in text and "Do this now" in text and "If you can" not in text,
           "Add to chat tells the model to save the transcript as a chat file, unconditionally")
     f.locator("#notice").get_by_text("자막을 입력창에 넣었습니다. 전송을 누르면 채팅에 추가됩니다.").wait_for(state="visible")

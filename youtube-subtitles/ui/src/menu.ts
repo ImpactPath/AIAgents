@@ -384,6 +384,19 @@ function subtitleArgs(extra: Record<string, unknown>): Record<string, unknown> {
 }
 
 // Percent-encoding survives into the saved file name on some hosts, so keep names to [A-Za-z0-9._-].
+// Same rule as the server's safe_title: no reserved characters, words joined by underscores, 80 chars.
+// Non-ASCII letters stay; only the host download (fileSafeName below) needs pure ASCII.
+function titleStem(title: string, fallback: string): string {
+  const name = title
+    .replace(/\p{C}+/gu, "")
+    .replace(/[\\/:*?"<>|]+/g, " ")
+    .replace(/\s+/g, " ")
+    .replace(/^[ .]+|[ .]+$/g, "")
+    .slice(0, 80)
+    .replace(/^[ .]+|[ .]+$/g, "");
+  return name.replace(/ /g, "_") || fallback;
+}
+
 function fileSafeName(name: string, fallback: string, ext: string): string {
   const dot = name.lastIndexOf(".");
   const base = dot > 0 ? name.slice(0, dot) : name;
@@ -521,6 +534,7 @@ function promptText(kind: string): string {
     `call get_subtitles again. Otherwise fetch them with get_subtitles (url=${v.url}, lang=${t.lang}, ` +
     `auto=${t.auto}, fmt=txt, layout=paragraphs, user_confirmed=true). With the subtitles`;
   if (kind === "report") {
+    const reportName = `${titleStem(v.title, v.video_id)}_summary`;
     const facts = [
       `- **Title**: ${v.title}`,
       `- **Channel**: ${v.channel || "unknown"}`,
@@ -565,14 +579,14 @@ function promptText(kind: string): string {
       `summary sections that is not in the subtitles (the implications and questions are your own analysis, ` +
       `and must say so implicitly by their framing), and write ranges with "to" or a hyphen, never an em ` +
       `dash. The report must be your own writing, not the transcript or a lightly edited copy of it. Deliver ` +
-      `it as a downloadable Markdown (.md) file named after the video title, and also give a three-line ` +
+      `it as a downloadable Markdown file named exactly '${reportName}.md', and also give a three-line ` +
       `summary in the chat. End the chat reply with exactly one yes-or-no question offering a review pass: ` +
       `whether to check the report against the subtitles for agenda items or content left out and for ` +
       `inaccurate statements or quotes, adding one sentence that, when the report has Key implications and ` +
       `Key discussion points, the review will also revise those two sections in line with whatever the ` +
       `corrections change. If the user agrees, re-read the subtitles, list each omission and each ` +
       `inaccuracy with what the subtitles actually say, revise the implications and discussion points ` +
-      `accordingly, and deliver a corrected report file with " v2" appended to its name.`
+      `accordingly, and deliver the corrected report as a file named exactly '${reportName}_v2.md'.`
     );
   }
   const task: Record<string, string> = {
@@ -630,7 +644,7 @@ async function onAddToChat(): Promise<void> {
     if (result.isError) throw new Error(textOf(result) || L.error);
     const text = textOf(result);
     if (!text) throw new Error("get_subtitles returned no text.");
-    const fileName = fileSafeName(`${data.video.title}_subtitle_${t.lang}${t.auto ? "_auto" : ""}.txt`, data.video.video_id, "txt");
+    const fileName = `${titleStem(data.video.title, data.video.video_id)}_subtitle_${t.lang}${t.auto ? "_auto" : ""}.txt`;
     const message =
       `Here are the subtitles of '${data.video.title}' (${t.lang}) for reference in this conversation. ` +
       `Keep them in mind for my next questions; do not call get_subtitles again for this track. ` +
