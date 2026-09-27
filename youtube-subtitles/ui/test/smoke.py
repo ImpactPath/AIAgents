@@ -332,11 +332,13 @@ def dark_korean(browser, shots: Path) -> None:
           "Summary report prompt: user_confirmed, user's language, own writing")
     facts = (f"- **Title**: {TITLE}\n- **Channel**: {CHANNEL}\n- **Duration**: 28:05\n- **Published**: 2024-05-17\n"
              "- **URL**: https://www.youtube.com/watch?v=dQw4w9WgXcQ")
-    check(facts in text and text.index("## Video info") < text.index("## Overview") < text.index("## Key arguments")
-          < text.index("## Notable quotes") < text.index("## Timeline of topics") < text.index("## Takeaways"),
-          "Summary report prompt fixes the section order with the Video facts first")
+    check(facts in text and text.index("## Video info") < text.index("## Overview") < text.index("## Key takeaways")
+          < text.index("## Key arguments") < text.index("## Notable quotes") < text.index("## Timeline of topics")
+          < text.index("## Key implications (optional)") < text.index("## Key discussion points"),
+          "Summary report prompt fixes the section order: takeaways after Overview, implications and questions last")
     check("8 to 10 numbered" in text and "6 to 8 Markdown blockquotes" in text and "5 to 7 numbered items" in text
-          and "1,500 to 2,500 words" in text, "Summary report prompt sets counts and length")
+          and "exactly 6 numbered implications" in text and "GGGI" in text and "6 to 7 numbered open questions" in text
+          and "1,500 to 2,500 words" in text, "Summary report prompt sets counts, GGGI, and length")
 
     check(f.locator("#btn-addchat").inner_text().strip() == "채팅에 넣기", "Korean Add to chat label")
     calls_before = len([m for m in run.log() if m.get("method") == "tools/call"])

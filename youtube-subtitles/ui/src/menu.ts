@@ -532,11 +532,13 @@ function promptText(kind: string): string {
     // arguments with the speaker's reasoning, paraphrased quotes, a timeline, and thesis-first takeaways.
     return (
       `${fetch}. Then write a detailed, structured summary report in ${answerLanguage()}, as a Markdown ` +
-      `document with exactly this structure and these English headings.\n` +
+      `document with exactly this structure and these English headings, in this order.\n` +
       `# <the video title>\n` +
       `## Video info\nExactly these five bullet lines, verbatim, each on its own line:\n${facts}\n` +
       `## Overview\nTwo paragraphs of 3 to 4 sentences each: what the video is about and the speaker's ` +
       `central position, then the scope of the argument and where the speaker lands.\n` +
+      `## Key takeaways\n5 to 7 numbered items. Each starts with a bold one-sentence thesis followed by 1 or 2 ` +
+      `explanatory sentences.\n` +
       `## Key arguments\n8 to 10 numbered "### N. <claim>" subsections in the order of the video (fewer only ` +
       `for a short video). Each heading is one declarative sentence stating the claim. Each subsection has 1 ` +
       `or 2 short paragraphs giving the speaker's reasoning and evidence, and may use a 3 to 5 item bullet ` +
@@ -546,14 +548,25 @@ function promptText(kind: string): string {
       `## Timeline of topics\nA bullet list of time ranges in bold followed by the topic. If the subtitles ` +
       `carry no timestamps, open with one sentence saying the ranges are approximate and derived from the ` +
       `total duration and the flow of the talk, then still give 6 to 8 ranges.\n` +
-      `## Takeaways\n5 to 7 numbered items. Each starts with a bold one-sentence thesis followed by 1 or 2 ` +
-      `explanatory sentences.\n` +
-      `Length: about 1,500 to 2,500 words for a 20 minute video, scaled to the video's length. Tone: ` +
-      `analytical, third person ("the speaker argues"), no filler and no praise. Keep names, numbers and ` +
-      `product names exact, add nothing that is not in the subtitles, and write ranges with "to" or a ` +
-      `hyphen, never an em dash. The report must be your own writing, not the transcript or a lightly ` +
-      `edited copy of it. Deliver it as a downloadable Markdown (.md) file named after the video title, ` +
-      `and also give a three-line summary in the chat.`
+      `## Key implications (optional)\nInclude this section only when the subject bears on public policy, ` +
+      `climate, energy, development, technology governance, economics, or international cooperation, so that ` +
+      `lessons for Korea and for international organizations follow naturally; omit it for entertainment, ` +
+      `personal, or purely how-to content. When included: exactly 6 numbered implications, about half for ` +
+      `Korea (government, business, or society) and half for international organizations, naming GGGI (the ` +
+      `Global Green Growth Institute) specifically in at least two of them. Each starts with a bold ` +
+      `one-sentence thesis followed by 1 or 2 sentences of reasoning grounded in the video.\n` +
+      `## Key discussion points (only together with Key implications)\n6 to 7 numbered open questions that ` +
+      `invite the reader to test, challenge, or extend the speaker's claims, each one sentence ending in a ` +
+      `question mark, optionally followed by one sentence of context. Omit this section whenever Key ` +
+      `implications is omitted.\n` +
+      `Length: about 1,500 to 2,500 words for a 20 minute video without the optional sections, up to about ` +
+      `3,000 with them, scaled to the video's length. Tone: analytical, third person ("the speaker ` +
+      `argues"), no filler and no praise. Keep names, numbers and product names exact, add nothing to the ` +
+      `summary sections that is not in the subtitles (the implications and questions are your own analysis, ` +
+      `and must say so implicitly by their framing), and write ranges with "to" or a hyphen, never an em ` +
+      `dash. The report must be your own writing, not the transcript or a lightly edited copy of it. Deliver ` +
+      `it as a downloadable Markdown (.md) file named after the video title, and also give a three-line ` +
+      `summary in the chat.`
     );
   }
   const task: Record<string, string> = {
