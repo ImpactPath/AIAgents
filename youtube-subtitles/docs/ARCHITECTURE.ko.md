@@ -1,6 +1,6 @@
 # 구조와 워크플로우: YouTube Subtitles 웹앱과 MCP 커넥터
 
-이 문서는 웹앱과 MCP 커넥터가 어떤 부품으로 이루어져 있고, 요청이 어떤 경로로 흐르며, 코드를 고칠 때 무엇이 어디로 옮겨 가는지를 설명합니다. 도식은 Mermaid 문법이라 GitHub와 대부분의 Markdown 뷰어에서 그림으로 보입니다.
+이 문서는 웹앱과 MCP 커넥터가 어떤 부품으로 이루어져 있고, 요청이 어떤 경로로 흐르며, 코드를 고칠 때 무엇이 어디로 옮겨 가는지를 설명합니다. 도식은 Mermaid 문법으로 적었고, Mermaid를 그리지 못하는 뷰어를 위해 같은 그림을 PNG로도 `docs/diagrams/`에 넣어 각 도식 아래에 붙였습니다.
 
 ## 1. 한 장 요약
 
@@ -41,6 +41,8 @@ flowchart LR
     E <--> C
     E --> YT
 ```
+
+![Overall structure](diagrams/1-overview.png)
 
 ## 2. 부품
 
@@ -83,6 +85,8 @@ sequenceDiagram
     API-->>U: file (or preview text)
 ```
 
+![Web app flow](diagrams/2-web-app-flow.png)
+
 영상 정보 조회와 자막 다운로드가 분리되어 있고, 두 번째 요청부터는 캐시가 응답합니다. 자막 목록에는 업로더 자막(Original)과 영상 원어의 자동 자막만 나오고, 유튜브가 자주 거부하는 기계 번역 자막은 숨깁니다.
 
 ### 3.2 Claude에서 메뉴 카드로 쓰기
@@ -117,6 +121,8 @@ sequenceDiagram
     end
 ```
 
+![Claude menu card flow](diagrams/3-claude-menu-flow.png)
+
 핵심 규칙은 세 가지입니다. 첫째, 링크가 오면 모델은 질문 없이 `get_video_info`를 먼저 부르고, 다음 단계는 서버가 결과 텍스트로 알려 줍니다. 둘째, `get_subtitles`와 `get_download_link`는 `user_confirmed=true`와 그 영상의 조회 기록이 있어야 실행되므로 모델이 메뉴를 건너뛸 수 없습니다. 셋째, 모델이 봐야 하는 내용(자막 전문, 요청문)은 입력창에 넣어 사용자가 전송하게 합니다. 이것이 Claude Desktop에서 확실히 동작하는 유일한 경로였습니다.
 
 ### 3.3 메뉴 카드가 없는 클라이언트 (ChatGPT, Claude Code)
@@ -143,6 +149,8 @@ sequenceDiagram
     G-->>U: result, or clickable link
 ```
 
+![Text-only client flow](diagrams/4-text-client-flow.png)
+
 클라이언트가 초기화 때 앱 지원을 선언하지 않으면 서버가 같은 메뉴를 글로 돌려주고, 모델이 두 단계로 묻습니다. 파일은 서버가 만든 공개 다운로드 링크로 받습니다.
 
 ### 3.4 요청이 서버 안에서 거치는 단계
@@ -167,6 +175,8 @@ flowchart TD
     CV --> OUT2[text, attachment, or link]
 ```
 
+![Request pipeline inside the server](diagrams/5-server-pipeline.png)
+
 ### 3.5 코드를 고쳐서 서버에 적용하기
 
 ```mermaid
@@ -176,6 +186,8 @@ flowchart LR
     MAC -->|launchctl kickstart| SVC[Running server]
     SVC -.->|new card on next link,<br/>new conversation for instructions| CL[Claude / ChatGPT]
 ```
+
+![Change deployment flow](diagrams/6-deploy-flow.png)
 
 수정은 Claude Code 세션에서 하고(pytest 209개와 Playwright 스모크 59개 통과 확인), GitHub main에 푸시한 뒤 Mac에서 `git pull`과 재시작을 합니다. 메뉴 카드 문구를 바꿨으면 링크를 다시 보내 새 카드를 띄우면 되고, 서버 안내문이나 도구 정의를 바꿨으면 새 대화를 열어야 반영됩니다. 사용만 할 때는 GitHub도 Claude Code도 필요 없습니다.
 
