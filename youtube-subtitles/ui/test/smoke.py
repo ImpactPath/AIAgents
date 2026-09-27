@@ -339,8 +339,9 @@ def dark_korean(browser, shots: Path) -> None:
     check("8 to 10 numbered" in text and "6 to 8 Markdown blockquotes" in text and "5 to 7 numbered items" in text
           and "exactly 6 numbered implications" in text and "GGGI" in text and "6 to 7 numbered open questions" in text
           and "1,500 to 2,500 words" in text, "Summary report prompt sets counts, GGGI, and length")
-    check("exactly one yes-or-no question offering a review pass" in text and "v2" in text,
-          "Summary report prompt ends the chat reply with a review-pass question")
+    check("exactly one yes-or-no question offering a review pass" in text and "v2" in text
+          and "revise those two sections" in text,
+          "Summary report prompt ends the chat reply with a review-pass question that covers the optional sections")
 
     check(f.locator("#btn-addchat").inner_text().strip() == "채팅에 넣기", "Korean Add to chat label")
     calls_before = len([m for m in run.log() if m.get("method") == "tools/call"])

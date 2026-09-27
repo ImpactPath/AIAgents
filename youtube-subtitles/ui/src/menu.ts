@@ -568,9 +568,11 @@ function promptText(kind: string): string {
       `it as a downloadable Markdown (.md) file named after the video title, and also give a three-line ` +
       `summary in the chat. End the chat reply with exactly one yes-or-no question offering a review pass: ` +
       `whether to check the report against the subtitles for agenda items or content left out and for ` +
-      `inaccurate statements or quotes. If the user agrees, re-read the subtitles, list each omission and ` +
-      `each inaccuracy with what the subtitles actually say, and deliver a corrected report file with ` +
-      `" v2" appended to its name.`
+      `inaccurate statements or quotes, adding one sentence that, when the report has Key implications and ` +
+      `Key discussion points, the review will also revise those two sections in line with whatever the ` +
+      `corrections change. If the user agrees, re-read the subtitles, list each omission and each ` +
+      `inaccuracy with what the subtitles actually say, revise the implications and discussion points ` +
+      `accordingly, and deliver a corrected report file with " v2" appended to its name.`
     );
   }
   const task: Record<string, string> = {
